@@ -105,10 +105,10 @@ fps                 = 16
 # ome graphics cards, such as v100, 2080ti, do not support torch.bfloat16
 weight_dtype            = torch.bfloat16
 # If you want to generate from text, please set the validation_image_start = None and validation_image_end = None
-validation_image_start  = "asset/1.png"
+validation_image_start  = "datasets/fashion_vace/first_frames/91IYZzsL6oS.png"
 
 # prompts
-prompt              = "一只棕色的狗摇着头，坐在舒适房间里的浅色沙发上。在狗的后面，架子上有一幅镶框的画，周围是粉红色的花朵。房间里柔和温暖的灯光营造出舒适的氛围。"
+prompt              = "基于参考图生成一段专业模特走秀视频，保持人物身份、脸部特征、发型、身材以及服装款式、颜色和细节与参考图一致。模特在高级时装秀T台上进行自然且较复杂的走秀动作，包括正常行走、转身、半侧身展示、回头、短暂停顿摆姿势以及继续前行。加入自然的自遮挡和前景遮挡，例如手臂短暂遮挡身体、头发部分遮挡肩部、服装摆动遮挡腿部，以及摄影机、观众或其他模特短暂经过前景。保持人物面部清晰稳定、服装外观一致。强调真实的服装动态、面料垂坠感和褶皱变化，保证动作自然流畅、时序稳定。整体画面具有高级时装秀氛围、电影感灯光、细节丰富、真实且精致。"
 negative_prompt     = "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
 guidance_scale      = 6.0
 seed                = 43

@@ -812,6 +812,25 @@ class Wan2_2FunControlPipeline(DiffusionPipeline):
                         torch.cat([masked_video_latents] * 2) if do_classifier_free_guidance else masked_video_latents
                     )
                     y = torch.cat([mask_input, masked_video_latents_input], dim=1).to(device, weight_dtype) 
+                    print('shape:',control_latents_input.shape,y.shape)
+                    # Align temporal dimension (dim=2) before concatenation.
+                    # control_latents_input comes from control video; y comes from init video mask/latents.
+                    # They may have different temporal lengths after VAE temporal compression.
+                    if control_latents_input is not None and control_latents_input.shape[2] != y.shape[2]:
+                        target_t = y.shape[2]
+                        cur_t = control_latents_input.shape[2]
+                        if cur_t > target_t:
+                            control_latents_input = control_latents_input[:, :, :target_t]
+                        else:
+                            pad_t = target_t - cur_t
+                            last = control_latents_input[:, :, -1:].expand(
+                                control_latents_input.shape[0],
+                                control_latents_input.shape[1],
+                                pad_t,
+                                control_latents_input.shape[3],
+                                control_latents_input.shape[4],
+                            )
+                            control_latents_input = torch.cat([control_latents_input, last], dim=2)
                     control_latents_input = y if control_latents_input is None else \
                         torch.cat([control_latents_input, y], dim = 1)
                 else:
@@ -831,6 +850,7 @@ class Wan2_2FunControlPipeline(DiffusionPipeline):
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
                 if self.vae.spatial_compression_ratio >= 16 and init_video is not None:
                     temp_ts = ((mask[0][0][:, ::2, ::2]) * t).flatten()
+                    print('seq_len',seq_len,temp_ts.size(0))
                     temp_ts = torch.cat([
                         temp_ts,
                         temp_ts.new_ones(seq_len - temp_ts.size(0)) * t

@@ -84,7 +84,7 @@ riflex_k            = 6
 # Config and model path
 config_path         = "config/wan2.2/wan_civitai_5b.yaml"
 # model path
-model_name          = "models/Diffusion_Transformer/Wan2.2-Fun-5B-Control/"
+model_name          = "/data/shared/models/Wan2.2-Fun-5B-Control/"
 
 # Choose the sampler in "Flow", "Flow_Unipc", "Flow_DPM++"
 sampler_name        = "Flow"
@@ -105,23 +105,54 @@ lora_path               = None
 lora_high_path          = None
 
 # Other params
-sample_size         = [1280, 704]
-video_length        = 121
-fps                 = 24
+#sample_size         = [1280, 704]
+#video_length        = 49
+#fps                 = 16
+#weight_dtype            = torch.bfloat16
+#control_video           = "asset/control_video.mp4"
+#control_camera_txt      = None
+#start_image             = None
+#end_image               = None
+#ref_image               = "asset/processed_girl.png·"
+
+
+#sample_size         = [480, 832]
+#video_length        = 50
+#fps                 = 30
+
+## Use torch.float16 if GPU does not support torch.bfloat16
+## ome graphics cards, such as v100, 2080ti, do not support torch.bfloat16
+#weight_dtype            = torch.bfloat16
+#control_video           = "asset/Das_validation/animating_mesh_to_videos/videos/3.mp4"
+#control_camera_txt      = None
+#start_image             = None
+#end_image               = None
+#ref_image               = "asset/Das_validation/animating_mesh_to_videos/repaint/3.png"
+
+# 使用更长的neg prompt如"模糊，突变，变形，失真，画面暗，文本字幕，画面固定，连环画，漫画，线稿，没有主体。"，可以增加稳定性
+# 在neg prompt中添加"安静，固定"等词语可以增加动态性。
+#prompt              = "一位年轻女子站在阳光明媚的海岸线上，身穿深蓝色背心与清爽的白色衬衫，外搭一条简洁的白色围裙，围裙在轻拂的海风中微微飘动。她拥有一头鲜艳的紫色长发，在风中轻盈舞动，发间系着一个精致的黑色蝴蝶结，与身后柔和的蔚蓝天空形成鲜明对比。她面容清秀，眉目精致，透着一股甜美的青春气息；神情柔和，略带羞涩，目光静静地凝望着远方的地平线，双手自然交叠于身前，仿佛沉浸在思绪之中。在她身后，是辽阔无垠、波光粼粼的大海，阳光洒在海面上，映出温暖的金色光晕。"
+#prompt              = "一位年轻女子有一头长直发，发色为深棕色或接近黑色，发丝在微风中轻轻飞扬，呈现自然动态感。她的皮肤白皙，五官精致，眼睛大而明亮，眉毛修饰得自然，嘴唇微微上扬，表情柔和而略带温暖。她穿着一件白色无袖上衣，上衣带有轻薄的褶皱装饰，整体风格轻盈、夏日感强。下半身穿白色超短裙，整体衣着干净简约。她双臂交叉放在胸前，身体稍微向一侧倾斜，姿态自然、优雅。目光直视镜头，神情平静而专注，带有一丝柔美感。背景为绿色的自然环境（可能是树木或草地），呈现虚化效果（浅景深），使人物更加突出。光线柔和，似乎是自然光，光线从左侧或上方照射过来，照亮她的脸部和头发，形成微微的光晕效果，增加画面梦幻感。整张图片色调明亮柔和，强调清新、纯净的气质，像是夏日清晨或傍晚的自然光下拍摄的肖像，带有轻盈、唯美的艺术感。"
+#prompt              = "a robot in a costume is dancing"
+
+sample_size         = [480, 832]
+video_length        = 317
+fps                 = 30
 
 # Use torch.float16 if GPU does not support torch.bfloat16
 # ome graphics cards, such as v100, 2080ti, do not support torch.bfloat16
 weight_dtype            = torch.bfloat16
-control_video           = "asset/pose.mp4"
+control_video           = "render.mp4"
 control_camera_txt      = None
 start_image             = None
 end_image               = None
-ref_image               = "asset/8.png"
+ref_image               = "style3d_processed.png"
 
 # 使用更长的neg prompt如"模糊，突变，变形，失真，画面暗，文本字幕，画面固定，连环画，漫画，线稿，没有主体。"，可以增加稳定性
 # 在neg prompt中添加"安静，固定"等词语可以增加动态性。
-prompt              = "一位年轻女子站在阳光明媚的海岸线上，身穿深蓝色背心与清爽的白色衬衫，外搭一条简洁的白色围裙，围裙在轻拂的海风中微微飘动。她拥有一头鲜艳的紫色长发，在风中轻盈舞动，发间系着一个精致的黑色蝴蝶结，与身后柔和的蔚蓝天空形成鲜明对比。她面容清秀，眉目精致，透着一股甜美的青春气息；神情柔和，略带羞涩，目光静静地凝望着远方的地平线，双手自然交叠于身前，仿佛沉浸在思绪之中。在她身后，是辽阔无垠、波光粼粼的大海，阳光洒在海面上，映出温暖的金色光晕。"
-negative_prompt     = "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+#prompt              = "一位年轻女子站在阳光明媚的海岸线上，身穿深蓝色背心与清爽的白色衬衫，外搭一条简洁的白色围裙，围裙在轻拂的海风中微微飘动。她拥有一头鲜艳的紫色长发，在风中轻盈舞动，发间系着一个精致的黑色蝴蝶结，与身后柔和的蔚蓝天空形成鲜明对
+prompt              = "Photorealistic real-life video of a fashion model. Keep the original motion and garment shape from the input video, but transform the rendered clothing into realistic fabric. The garment has authentic cloth behavior: fine wrinkles, layered folds, slight vibration, natural inertia, and realistic motion-dependent shading. Detailed textile surface, believable fabric thickness, real camera capture, natural skin, soft cinematic lighting, temporally consistent, no CGI, no overly smooth cloth, no plastic highlights."
+negative_prompt     = "CGI, 3D render, cartoon, anime, synthetic, plastic texture, overly smooth cloth, fake fabric, game graphics, low detail, blurry, flicker, temporal inconsistency, distorted body, unstable face, oversaturated, artificial lighting"
 
 # Using longer neg prompt such as "Blurring, mutation, deformation, distortion, dark and solid, comics, text subtitles, line art." can increase stability
 # Adding words such as "quiet, solid" to the neg prompt can increase dynamism.

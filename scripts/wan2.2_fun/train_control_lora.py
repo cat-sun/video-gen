@@ -1420,6 +1420,15 @@ def main():
     # Scheduler and math around the number of training steps.
     overrode_max_train_steps = False
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
+    if len(train_dataloader) == 0 or num_update_steps_per_epoch == 0:
+        raise RuntimeError(
+            "train_dataloader 长度为 0，无法计算训练步数。请检查："
+            "1) train_data_dir / metadata 中的视频路径是否存在且可读；"
+            "2) 多卡时样本是否过少（建议样本条数 ≥ GPU 数，或先用单卡调试）；"
+            "3) enable_bucket 且 drop_last 时是否无法组成完整 batch。"
+            f" len(train_dataset)={len(train_dataset)}, len(train_dataloader)={len(train_dataloader)}, "
+            f"gradient_accumulation_steps={args.gradient_accumulation_steps}"
+        )
     if args.max_train_steps is None:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
         overrode_max_train_steps = True
@@ -1465,6 +1474,14 @@ def main():
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
+    if len(train_dataloader) == 0 or num_update_steps_per_epoch == 0:
+        raise RuntimeError(
+            "accelerator.prepare 之后 train_dataloader 每轮步数为 0，无法计算 num_train_epochs（除零）。"
+            "常见原因：分布式下每个进程分到的 batch 数为 0（样本数 < 进程数时极易出现），或数据未正确加载。"
+            f" len(train_dataset)={len(train_dataset)}, len(train_dataloader)={len(train_dataloader)}, "
+            f"num_processes={accelerator.num_processes}, gradient_accumulation_steps={args.gradient_accumulation_steps}。"
+            "可尝试：减少 GPU 数量、增大训练集、或暂时关闭多卡用单进程验证数据能否迭代。"
+        )
     if overrode_max_train_steps:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
     # Afterwards we recalculate our number of training epochs

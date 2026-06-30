@@ -29,6 +29,7 @@ import accelerate
 import diffusers
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint
 import torchvision.transforms.functional as TF
@@ -112,6 +113,189 @@ def generate_timestep_with_lognorm(low, high, shape, device="cpu", generator=Non
 check_min_version("0.18.0.dev0")
 
 logger = get_logger(__name__, log_level="INFO")
+
+
+class MultiControlVaceAdapter(nn.Module):
+    """Missing-modality-aware G-buffer adapter with lightweight modality-axis attention."""
+
+    DEFAULT_MODALITIES = ("depth", "normal", "motion", "mask", "uv")
+    DEFAULT_COMMON_MODALITIES = ("depth", "normal")
+
+    def __init__(
+        self,
+        latent_channels,
+        modality_names=None,
+        common_modality_names=None,
+        num_heads=4,
+        synthetic_modality_dropout_prob=0.5,
+        synthetic_full_modality_prob=0.25,
+    ):
+        super().__init__()
+        self.latent_channels = latent_channels
+        self.modality_names = tuple(modality_names or self.DEFAULT_MODALITIES)
+        self.common_modality_names = tuple(common_modality_names or self.DEFAULT_COMMON_MODALITIES)
+        self.num_modalities = len(self.modality_names)
+        self.num_heads = min(num_heads, latent_channels)
+        while latent_channels % self.num_heads != 0 and self.num_heads > 1:
+            self.num_heads -= 1
+        self.head_dim = latent_channels // self.num_heads
+        self.synthetic_modality_dropout_prob = synthetic_modality_dropout_prob
+        self.synthetic_full_modality_prob = synthetic_full_modality_prob
+
+        self.modality_encoders = nn.ModuleList([
+            nn.Conv3d(latent_channels, latent_channels, kernel_size=1)
+            for _ in self.modality_names
+        ])
+        for encoder in self.modality_encoders:
+            nn.init.zeros_(encoder.weight)
+            nn.init.zeros_(encoder.bias)
+
+        self.modality_embedding = nn.Parameter(torch.randn(self.num_modalities, latent_channels, 1, 1, 1) * 0.02)
+        self.availability_embedding = nn.Parameter(torch.randn(2, self.num_modalities, latent_channels, 1, 1, 1) * 0.02)
+        self.q_proj = nn.Linear(latent_channels, latent_channels)
+        self.k_proj = nn.Linear(latent_channels, latent_channels)
+        self.v_proj = nn.Linear(latent_channels, latent_channels)
+        self.out_proj = nn.Linear(latent_channels, latent_channels)
+        self.confidence = nn.Sequential(
+            nn.Linear(self.num_modalities, latent_channels),
+            nn.SiLU(),
+            nn.Linear(latent_channels, latent_channels),
+            nn.Sigmoid(),
+        )
+        self.zero_conv = nn.Conv3d(latent_channels, latent_channels, kernel_size=1)
+        nn.init.zeros_(self.zero_conv.weight)
+        nn.init.zeros_(self.zero_conv.bias)
+
+    def _apply_synthetic_modality_dropout(self, availability, is_synthetic):
+        if not self.training or self.synthetic_modality_dropout_prob <= 0:
+            return availability
+        if is_synthetic is None:
+            return availability
+
+        availability = availability.clone()
+        device = availability.device
+        is_synthetic = is_synthetic.to(device=device, dtype=torch.bool)
+        if not torch.any(is_synthetic):
+            return availability
+
+        keep_full = torch.rand(availability.size(0), device=device) < self.synthetic_full_modality_prob
+        do_dropout = (
+            is_synthetic
+            & ~keep_full
+            & (torch.rand(availability.size(0), device=device) < self.synthetic_modality_dropout_prob)
+        )
+        if not torch.any(do_dropout):
+            return availability
+
+        common_indices = [self.modality_names.index(name) for name in self.common_modality_names if name in self.modality_names]
+        optional_indices = [i for i in range(self.num_modalities) if i not in common_indices]
+        if optional_indices:
+            random_keep = torch.rand((availability.size(0), len(optional_indices)), device=device) > 0.5
+            availability[:, optional_indices] = torch.where(
+                do_dropout[:, None],
+                availability[:, optional_indices] * random_keep.to(availability.dtype),
+                availability[:, optional_indices],
+            )
+        for index in common_indices:
+            availability[:, index] = torch.where(
+                do_dropout,
+                torch.maximum(availability[:, index], torch.ones_like(availability[:, index])),
+                availability[:, index],
+            )
+        return availability
+
+    def forward(self, modality_latents, availability, is_synthetic=None):
+        # Backward-compatible path for the old normal/depth adapter call.
+        if isinstance(modality_latents, torch.Tensor) and isinstance(availability, torch.Tensor) and modality_latents.dim() == 5:
+            normal_latents, depth_latents = modality_latents, availability
+            modality_latents = normal_latents.new_zeros(
+                normal_latents.size(0), self.num_modalities, *normal_latents.shape[1:]
+            )
+            availability = normal_latents.new_zeros(normal_latents.size(0), self.num_modalities)
+            modality_latents[:, self.modality_names.index("depth")] = depth_latents
+            modality_latents[:, self.modality_names.index("normal")] = normal_latents
+            availability[:, self.modality_names.index("depth")] = 1.0
+            availability[:, self.modality_names.index("normal")] = 1.0
+
+        bsz, num_modalities, channels, frames, height, width = modality_latents.shape
+        if num_modalities != self.num_modalities:
+            raise ValueError(f"Expected {self.num_modalities} modalities, got {num_modalities}.")
+
+        availability = availability.to(device=modality_latents.device, dtype=modality_latents.dtype)
+        availability = self._apply_synthetic_modality_dropout(availability, is_synthetic)
+        available = availability.view(bsz, num_modalities, 1, 1, 1, 1)
+
+        encoded = []
+        for index, encoder in enumerate(self.modality_encoders):
+            token = modality_latents[:, index] * available[:, index]
+            token = token + encoder(token)
+            token = token + self.modality_embedding[index].to(dtype=token.dtype)
+            state_index = availability[:, index].long().clamp(0, 1)
+            token = token + self.availability_embedding[state_index, index].to(dtype=token.dtype)
+            encoded.append(token)
+        tokens = torch.stack(encoded, dim=1)
+
+        common_indices = [self.modality_names.index(name) for name in self.common_modality_names if name in self.modality_names]
+        common_available = availability[:, common_indices].view(bsz, len(common_indices), 1, 1, 1, 1)
+        common_raw = modality_latents[:, common_indices]
+        base = (common_raw * common_available).sum(dim=1)
+        base = base / common_available.sum(dim=1).clamp(min=1.0)
+        if "normal" in self.modality_names:
+            normal_index = self.modality_names.index("normal")
+            normal_available = availability[:, normal_index].view(bsz, 1, 1, 1, 1)
+            base = torch.where(normal_available > 0.5, modality_latents[:, normal_index], base)
+
+        query = base
+
+        tokens_flat = tokens.permute(0, 3, 4, 5, 1, 2).reshape(-1, num_modalities, channels)
+        query_flat = query.permute(0, 2, 3, 4, 1).reshape(-1, 1, channels)
+        key_padding = availability[:, None, None, None, :].expand(bsz, frames, height, width, num_modalities).reshape(-1, num_modalities) < 0.5
+
+        q = self.q_proj(query_flat).view(-1, 1, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(tokens_flat).view(-1, num_modalities, self.num_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(tokens_flat).view(-1, num_modalities, self.num_heads, self.head_dim).transpose(1, 2)
+        attn = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+        attn = attn.masked_fill(key_padding[:, None, None, :], -10000.0)
+        attn = torch.softmax(attn, dim=-1)
+        fused = torch.matmul(attn, v).transpose(1, 2).reshape(-1, 1, channels)
+        fused = self.out_proj(fused).reshape(bsz, frames, height, width, channels).permute(0, 4, 1, 2, 3)
+
+        confidence = self.confidence(availability).view(bsz, channels, 1, 1, 1)
+        fused = fused * confidence
+        return base + self.zero_conv(fused)
+
+    def save_pretrained(self, output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+        torch.save(
+            {
+                "state_dict": self.state_dict(),
+                "config": {
+                    "latent_channels": self.latent_channels,
+                    "modality_names": self.modality_names,
+                    "common_modality_names": self.common_modality_names,
+                    "num_heads": self.num_heads,
+                    "synthetic_modality_dropout_prob": self.synthetic_modality_dropout_prob,
+                    "synthetic_full_modality_prob": self.synthetic_full_modality_prob,
+                },
+            },
+            os.path.join(output_dir, "pytorch_model.bin"),
+        )
+
+    @classmethod
+    def from_pretrained(cls, input_dir, latent_channels=None, **kwargs):
+        checkpoint = torch.load(os.path.join(input_dir, "pytorch_model.bin"), map_location="cpu")
+        if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
+            config = checkpoint.get("config", {})
+            if latent_channels is not None:
+                config["latent_channels"] = latent_channels
+            config.update(kwargs)
+            model = cls(**config)
+            state_dict = checkpoint["state_dict"]
+        else:
+            model = cls(latent_channels, **kwargs)
+            state_dict = checkpoint
+        model.load_state_dict(state_dict)
+        return model
 
 def log_validation(vae, text_encoder, tokenizer, clip_image_encoder, transformer3d, args, config, accelerator, weight_dtype, global_step):
     try:
@@ -606,6 +790,45 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--control_context_ratio",
+        type=float,
+        default=0.25,
+        help="Fraction of steps using control_file_path (e.g. normals) as vace context. Use 0.85 for ref+normal training.",
+    )
+    parser.add_argument(
+        "--photo_ref_ratio",
+        type=float,
+        default=0.25,
+        help="Use GT frame as subject ref instead of object_file_path. Set 0 when every sample has object_file_path.",
+    )
+    parser.add_argument(
+        "--force_subject_ref",
+        action="store_true",
+        help="Keep object_file_path subject ref in inpaint branch (do not randomly drop).",
+    )
+    parser.add_argument(
+        "--align_gt_frames_to_control",
+        action="store_true",
+        help="Sample GT and control using min(GT frames, control frames) so indices never exceed the shorter video.",
+    )
+    parser.add_argument(
+        "--enable_multi_control_adapter",
+        action="store_true",
+        help="Fuse G-buffer modalities with a missing-modality-aware VACE adapter.",
+    )
+    parser.add_argument(
+        "--synthetic_modality_dropout_prob",
+        type=float,
+        default=0.5,
+        help="Probability of applying modality dropout to synthetic/rendered samples in the G-buffer adapter.",
+    )
+    parser.add_argument(
+        "--synthetic_full_modality_prob",
+        type=float,
+        default=0.25,
+        help="Probability of keeping full synthetic/rendered G-buffer modalities when dropout is enabled.",
+    )
+    parser.add_argument(
         "--weighting_scheme",
         type=str,
         default="none",
@@ -641,6 +864,8 @@ def main():
     args = parse_args()
     if args.train_batch_size >= 2:
         raise ValueError("This code does not support args.train_batch_size >= 2 now.")
+    if args.enable_multi_control_adapter and (args.use_deepspeed or args.use_fsdp):
+        raise ValueError("--enable_multi_control_adapter currently supports regular DDP/Accelerate training only.")
 
     if args.report_to == "wandb" and args.hub_token is not None:
         raise ValueError(
@@ -797,11 +1022,20 @@ def main():
         os.path.join(args.pretrained_model_name_or_path, config['transformer_additional_kwargs'].get('transformer_subpath', 'transformer')),
         transformer_additional_kwargs=OmegaConf.to_container(config['transformer_additional_kwargs']),
     ).to(weight_dtype)
+    if hasattr(transformer3d, "ref_vace_blocks"):
+        transformer3d.ref_vace_blocks.load_state_dict(transformer3d.vace_blocks.state_dict())
 
     # Freeze vae and text_encoder and set transformer3d to trainable
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
     transformer3d.requires_grad_(False)
+    multi_control_adapter = None
+    if args.enable_multi_control_adapter:
+        multi_control_adapter = MultiControlVaceAdapter(
+            latent_channels=vae.latent_channels * 2,
+            synthetic_modality_dropout_prob=args.synthetic_modality_dropout_prob,
+            synthetic_full_modality_prob=args.synthetic_full_modality_prob,
+        ).to(weight_dtype)
 
     if args.transformer_path is not None:
         print(f"From checkpoint: {args.transformer_path}")
@@ -898,9 +1132,15 @@ def main():
                     if args.use_ema:
                         ema_transformer3d.save_pretrained(os.path.join(output_dir, "transformer_ema"))
 
-                    models[0].save_pretrained(os.path.join(output_dir, "transformer"))
+                    for model in models:
+                        unwrapped_model = accelerator.unwrap_model(model)
+                        if isinstance(unwrapped_model, MultiControlVaceAdapter):
+                            unwrapped_model.save_pretrained(os.path.join(output_dir, "multi_control_adapter"))
+                        else:
+                            unwrapped_model.save_pretrained(os.path.join(output_dir, "transformer"))
                     if not args.use_deepspeed:
-                        weights.pop()
+                        while len(weights) > 0:
+                            weights.pop()
 
                     with open(os.path.join(output_dir, "sampler_pos_start.pkl"), 'wb') as file:
                         pickle.dump([batch_sampler.sampler._pos_start, first_epoch], file)
@@ -923,14 +1163,25 @@ def main():
                 for i in range(len(models)):
                     # pop models so that they are not loaded again
                     model = models.pop()
+                    unwrapped_model = accelerator.unwrap_model(model)
+
+                    if isinstance(unwrapped_model, MultiControlVaceAdapter):
+                        adapter_path = os.path.join(input_dir, "multi_control_adapter")
+                        if os.path.isdir(adapter_path):
+                            load_model = MultiControlVaceAdapter.from_pretrained(
+                                adapter_path, latent_channels=vae.latent_channels * 2
+                            )
+                            unwrapped_model.load_state_dict(load_model.state_dict())
+                            del load_model
+                        continue
 
                     # load diffusers style into model
                     load_model = VaceWanTransformer3DModel.from_pretrained(
                         input_dir, subfolder="transformer"
                     )
-                    model.register_to_config(**load_model.config)
+                    unwrapped_model.register_to_config(**load_model.config)
 
-                    model.load_state_dict(load_model.state_dict())
+                    unwrapped_model.load_state_dict(load_model.state_dict())
                     del load_model
 
                 pkl_path = os.path.join(input_dir, "sampler_pos_start.pkl")
@@ -979,6 +1230,8 @@ def main():
         optimizer_cls = torch.optim.AdamW
 
     trainable_params = list(filter(lambda p: p.requires_grad, transformer3d.parameters()))
+    if multi_control_adapter is not None:
+        trainable_params.extend(list(multi_control_adapter.parameters()))
     trainable_params_optim = [
         {'params': [], 'lr': args.learning_rate},
         {'params': [], 'lr': args.learning_rate / 2},
@@ -1005,6 +1258,10 @@ def main():
                 if accelerator.is_main_process:
                     print(f"Set {name} to lr : {args.learning_rate / 2}")
                 break
+    if multi_control_adapter is not None:
+        trainable_params_optim[0]['params'].extend(list(multi_control_adapter.parameters()))
+        if accelerator.is_main_process:
+            print(f"Set multi_control_adapter to lr : {args.learning_rate}")
 
     if args.use_came:
         optimizer = optimizer_cls(
@@ -1041,7 +1298,8 @@ def main():
         enable_bucket=args.enable_bucket, 
         enable_inpaint=False,
         enable_camera_info=False,
-        enable_subject_info=True
+        enable_subject_info=True,
+        align_frames_to_control=args.align_gt_frames_to_control,
     )
 
     def worker_init_fn(_seed):
@@ -1051,6 +1309,16 @@ def main():
             np.random.seed(_seed + worker_id)
             random.seed(_seed + worker_id)
         return _worker_init_fn
+
+    def get_dataloader_kwargs():
+        kwargs = {
+            "num_workers": args.dataloader_num_workers,
+            "persistent_workers": False,
+        }
+        if args.dataloader_num_workers > 0:
+            kwargs["prefetch_factor"] = 1
+            kwargs["worker_init_fn"] = worker_init_fn(args.seed + accelerator.process_index)
+        return kwargs
     
     if args.enable_bucket:
         aspect_ratio_sample_size = {key : [x / 512 * args.video_sample_size for x in ASPECT_RATIO_512[key]] for key in ASPECT_RATIO_512.keys()}
@@ -1120,6 +1388,11 @@ def main():
             new_examples["text"]         = []
             # Used in Control Mode
             new_examples["control_pixel_values"] = []
+            new_examples["depth_pixel_values"] = []
+            gbuffer_modalities = list(MultiControlVaceAdapter.DEFAULT_MODALITIES)
+            new_examples["gbuffer_pixel_values"] = {name: [] for name in gbuffer_modalities}
+            new_examples["gbuffer_availability"] = []
+            new_examples["is_synthetic"] = []
             # Used in Control Ref Mode
             new_examples["ref_pixel_values"] = []
             new_examples["clip_pixel_values"] = []
@@ -1189,6 +1462,7 @@ def main():
 
             if args.fix_sample_size is not None:
                 fix_sample_size = [int(x / 16) * 16 for x in args.fix_sample_size]
+                closest_size = fix_sample_size
             elif args.random_ratio_crop:
                 if rng is None:
                     random_sample_size = aspect_ratio_random_crop_sample_size[
@@ -1199,6 +1473,7 @@ def main():
                         rng.choice(list(aspect_ratio_random_crop_sample_size.keys()), p = ASPECT_RATIO_RANDOM_CROP_PROB)
                     ]
                 random_sample_size = [int(x / 16) * 16 for x in random_sample_size]
+                closest_size = random_sample_size
             else:
                 closest_size, closest_ratio = get_closest_ratio(h, w, ratios=aspect_ratio_sample_size)
                 closest_size = [int(x / 16) * 16 for x in closest_size]
@@ -1232,6 +1507,25 @@ def main():
 
                 control_pixel_values = torch.from_numpy(example["control_pixel_values"]).permute(0, 3, 1, 2).contiguous()
                 control_pixel_values = control_pixel_values / 255.
+                depth_pixel_values = torch.from_numpy(example["depth_pixel_values"]).permute(0, 3, 1, 2).contiguous()
+                depth_pixel_values = depth_pixel_values / 255.
+                gbuffer_values = example.get("gbuffer_pixel_values", {})
+                gbuffer_available = example.get("gbuffer_available", {})
+
+                def _to_video_tensor(values):
+                    if values is None:
+                        return None
+                    if isinstance(values, torch.Tensor):
+                        return values
+                    return torch.from_numpy(values).permute(0, 3, 1, 2).contiguous() / 255.
+
+                raw_gbuffer_values = {
+                    "depth": depth_pixel_values,
+                    "normal": control_pixel_values,
+                    "motion": _to_video_tensor(gbuffer_values.get("motion")),
+                    "mask": _to_video_tensor(gbuffer_values.get("mask")),
+                    "uv": _to_video_tensor(gbuffer_values.get("uv")),
+                }
 
                 _, channel, h, w = pixel_values.size()
                 new_subject_image = torch.zeros(4, channel, h, w)
@@ -1297,6 +1591,24 @@ def main():
     
                 new_examples["pixel_values"].append(transform(pixel_values))
                 new_examples["control_pixel_values"].append(transform(control_pixel_values))
+                new_examples["depth_pixel_values"].append(transform(depth_pixel_values))
+                for modality_name in gbuffer_modalities:
+                    values = raw_gbuffer_values[modality_name]
+                    if values is None:
+                        new_examples["gbuffer_pixel_values"][modality_name].append(
+                            torch.zeros_like(new_examples["control_pixel_values"][-1])
+                        )
+                    else:
+                        new_examples["gbuffer_pixel_values"][modality_name].append(transform(values))
+                gbuffer_availability_values = []
+                for modality_name in gbuffer_modalities:
+                    if modality_name in gbuffer_available:
+                        available = float(gbuffer_available.get(modality_name, 0.0))
+                    else:
+                        available = 1.0 if raw_gbuffer_values[modality_name] is not None else 0.0
+                    gbuffer_availability_values.append(available)
+                new_examples["gbuffer_availability"].append(torch.tensor(gbuffer_availability_values))
+                new_examples["is_synthetic"].append(float(example.get("is_synthetic", 0.0)))
             
                 new_examples["text"].append(example["text"])
                 # Magvae needs the number of frames to be 4n + 1.
@@ -1327,6 +1639,13 @@ def main():
             # Limit the number of frames to the same
             new_examples["pixel_values"] = torch.stack([example[:batch_video_length] for example in new_examples["pixel_values"]])
             new_examples["control_pixel_values"] = torch.stack([example[:batch_video_length] for example in new_examples["control_pixel_values"]])
+            new_examples["depth_pixel_values"] = torch.stack([example[:batch_video_length] for example in new_examples["depth_pixel_values"]])
+            new_examples["gbuffer_pixel_values"] = torch.stack([
+                torch.stack([example[:batch_video_length] for example in new_examples["gbuffer_pixel_values"][name]])
+                for name in gbuffer_modalities
+            ], dim=2)
+            new_examples["gbuffer_availability"] = torch.stack(new_examples["gbuffer_availability"])
+            new_examples["is_synthetic"] = torch.tensor(new_examples["is_synthetic"])
             new_examples["ref_pixel_values"] = torch.stack([example[:batch_video_length] for example in new_examples["ref_pixel_values"]])
             new_examples["clip_pixel_values"] = torch.stack([example for example in new_examples["clip_pixel_values"]])
             new_examples["clip_idx"] = torch.tensor(new_examples["clip_idx"])
@@ -1357,9 +1676,7 @@ def main():
             train_dataset,
             batch_sampler=batch_sampler,
             collate_fn=collate_fn,
-            persistent_workers=True if args.dataloader_num_workers != 0 else False,
-            num_workers=args.dataloader_num_workers,
-            worker_init_fn=worker_init_fn(args.seed + accelerator.process_index)
+            **get_dataloader_kwargs(),
         )
     else:
         # DataLoaders creation:
@@ -1367,10 +1684,8 @@ def main():
         batch_sampler = ImageVideoSampler(RandomSampler(train_dataset, generator=batch_sampler_generator), train_dataset, args.train_batch_size)
         train_dataloader = torch.utils.data.DataLoader(
             train_dataset,
-            batch_sampler=batch_sampler, 
-            persistent_workers=True if args.dataloader_num_workers != 0 else False,
-            num_workers=args.dataloader_num_workers,
-            worker_init_fn=worker_init_fn(args.seed + accelerator.process_index)
+            batch_sampler=batch_sampler,
+            **get_dataloader_kwargs(),
         )
 
     # Scheduler and math around the number of training steps.
@@ -1388,9 +1703,14 @@ def main():
     )
 
     # Prepare everything with our `accelerator`.
-    transformer3d, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-        transformer3d, optimizer, train_dataloader, lr_scheduler
-    )
+    if multi_control_adapter is not None:
+        transformer3d, multi_control_adapter, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+            transformer3d, multi_control_adapter, optimizer, train_dataloader, lr_scheduler
+        )
+    else:
+        transformer3d, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+            transformer3d, optimizer, train_dataloader, lr_scheduler
+        )
 
     if fsdp_stage != 0:
         from functools import partial
@@ -1535,16 +1855,30 @@ def main():
                     Image.fromarray(np.uint8(clip_pixel_value)).save(f"{args.output_dir}/sanity_check/clip_{gif_name[:10] if not text == '' else f'{global_step}-{idx}'}.png")
                     save_videos_grid(pixel_value, f"{args.output_dir}/sanity_check/mask_{gif_name[:10] if not text == '' else f'{global_step}-{idx}'}.gif", rescale=True)
 
-            with accelerator.accumulate(transformer3d):
+            accumulate_models = (transformer3d, multi_control_adapter) if multi_control_adapter is not None else (transformer3d,)
+            with accelerator.accumulate(*accumulate_models):
                 # Convert images to latent space
                 pixel_values = batch["pixel_values"].to(weight_dtype)
                 control_pixel_values = batch["control_pixel_values"].to(weight_dtype)
+                depth_pixel_values = batch["depth_pixel_values"].to(weight_dtype)
+                gbuffer_pixel_values = batch.get("gbuffer_pixel_values")
+                gbuffer_availability = batch.get("gbuffer_availability")
+                is_synthetic = batch.get("is_synthetic")
+                if gbuffer_pixel_values is not None:
+                    gbuffer_pixel_values = gbuffer_pixel_values.to(weight_dtype)
+                    gbuffer_availability = gbuffer_availability.to(weight_dtype)
+                    is_synthetic = is_synthetic.to(weight_dtype)
 
                 # Increase the batch size when the length of the latent sequence of the current sample is small
                 if args.auto_tile_batch_size and args.training_with_video_token_length and zero_stage != 3:
                     if args.video_sample_n_frames * args.token_sample_size * args.token_sample_size // 16 >= pixel_values.size()[1] * pixel_values.size()[3] * pixel_values.size()[4]:
                         pixel_values = torch.tile(pixel_values, (4, 1, 1, 1, 1))
                         control_pixel_values = torch.tile(control_pixel_values, (4, 1, 1, 1, 1))
+                        depth_pixel_values = torch.tile(depth_pixel_values, (4, 1, 1, 1, 1))
+                        if gbuffer_pixel_values is not None:
+                            gbuffer_pixel_values = torch.tile(gbuffer_pixel_values, (4, 1, 1, 1, 1, 1))
+                            gbuffer_availability = torch.tile(gbuffer_availability, (4, 1))
+                            is_synthetic = torch.tile(is_synthetic, (4,))
                         if args.enable_text_encoder_in_dataloader:
                             batch['encoder_hidden_states'] = torch.tile(batch['encoder_hidden_states'], (4, 1, 1))
                             batch['encoder_attention_mask'] = torch.tile(batch['encoder_attention_mask'], (4, 1))
@@ -1553,6 +1887,11 @@ def main():
                     elif args.video_sample_n_frames * args.token_sample_size * args.token_sample_size // 4 >= pixel_values.size()[1] * pixel_values.size()[3] * pixel_values.size()[4]:
                         pixel_values = torch.tile(pixel_values, (2, 1, 1, 1, 1))
                         control_pixel_values = torch.tile(control_pixel_values, (2, 1, 1, 1, 1))
+                        depth_pixel_values = torch.tile(depth_pixel_values, (2, 1, 1, 1, 1))
+                        if gbuffer_pixel_values is not None:
+                            gbuffer_pixel_values = torch.tile(gbuffer_pixel_values, (2, 1, 1, 1, 1, 1))
+                            gbuffer_availability = torch.tile(gbuffer_availability, (2, 1))
+                            is_synthetic = torch.tile(is_synthetic, (2,))
                         if args.enable_text_encoder_in_dataloader:
                             batch['encoder_hidden_states'] = torch.tile(batch['encoder_hidden_states'], (2, 1, 1))
                             batch['encoder_attention_mask'] = torch.tile(batch['encoder_attention_mask'], (2, 1))
@@ -1612,6 +1951,9 @@ def main():
 
                     pixel_values = pixel_values[:, :temp_n_frames, :, :]
                     control_pixel_values = control_pixel_values[:, :temp_n_frames, :, :]
+                    depth_pixel_values = depth_pixel_values[:, :temp_n_frames, :, :]
+                    if gbuffer_pixel_values is not None:
+                        gbuffer_pixel_values = gbuffer_pixel_values[:, :temp_n_frames]
                     mask_pixel_values = mask_pixel_values[:, :temp_n_frames, :, :]
                     mask = mask[:, :temp_n_frames, :, :]
                     
@@ -1637,6 +1979,9 @@ def main():
 
                     pixel_values = pixel_values[:, :actual_video_length, :, :]
                     control_pixel_values = control_pixel_values[:, :actual_video_length, :, :]
+                    depth_pixel_values = depth_pixel_values[:, :actual_video_length, :, :]
+                    if gbuffer_pixel_values is not None:
+                        gbuffer_pixel_values = gbuffer_pixel_values[:, :actual_video_length]
                     mask_pixel_values = mask_pixel_values[:, :actual_video_length, :, :]
                     mask = mask[:, :actual_video_length, :, :]
 
@@ -1737,10 +2082,15 @@ def main():
                     else:
                         subject_images_num = rng.choice([0, 1, 2, 3, 4])
 
+                    photo_ref_ratio = float(np.clip(args.photo_ref_ratio, 0.0, 1.0))
                     if rng is None:
-                        use_full_photo_ref_flag = np.random.choice([True, False], p=[0.25, 0.75])
+                        use_full_photo_ref_flag = np.random.choice(
+                            [True, False], p=[photo_ref_ratio, 1.0 - photo_ref_ratio]
+                        )
                     else:
-                        use_full_photo_ref_flag = rng.choice([True, False], p=[0.25, 0.75])
+                        use_full_photo_ref_flag = rng.choice(
+                            [True, False], p=[photo_ref_ratio, 1.0 - photo_ref_ratio]
+                        )
 
                     if not use_full_photo_ref_flag:
                         if subject_images_num == 0:
@@ -1772,14 +2122,22 @@ def main():
                                 new_ref_pixel_values[i].append(ref_pixel_values[i, :, j:j+1])
                         subject_ref_images = new_ref_pixel_values
         
+                    control_context_ratio = float(np.clip(args.control_context_ratio, 0.0, 1.0))
                     if rng is None:
-                        inpaint_flag = np.random.choice([True, False], p=[0.75, 0.25])
+                        inpaint_flag = np.random.choice(
+                            [True, False], p=[1.0 - control_context_ratio, control_context_ratio]
+                        )
                     else:
-                        inpaint_flag = rng.choice([True, False], p=[0.75, 0.25])
+                        inpaint_flag = rng.choice(
+                            [True, False], p=[1.0 - control_context_ratio, control_context_ratio]
+                        )
                     mask = rearrange(mask, "b f c h w -> b c f h w")
                     mask = torch.tile(mask, [1, 3, 1, 1, 1])
+                    fused_vace_latents = None
                     if inpaint_flag or (control_pixel_values == -1).all():
-                        if rng is None:
+                        if args.force_subject_ref:
+                            do_not_use_ref_images = False
+                        elif rng is None:
                             do_not_use_ref_images = np.random.choice([True, False], p=[0.50, 0.50])
                         else:
                             do_not_use_ref_images = rng.choice([True, False], p=[0.50, 0.50])
@@ -1789,28 +2147,46 @@ def main():
                         vace_latents = vace_encode_frames(mask_pixel_values, subject_ref_images, mask)
                     else:
                         control_pixel_values = rearrange(control_pixel_values, "b f c h w -> b c f h w")
-                        vace_latents = vace_encode_frames(control_pixel_values, subject_ref_images, mask)
+                        if multi_control_adapter is not None:
+                            if gbuffer_pixel_values is None:
+                                depth_pixel_values = rearrange(depth_pixel_values, "b f c h w -> b c f h w")
+                                normal_vace_latents = vace_encode_frames(control_pixel_values, subject_ref_images, mask)
+                                depth_vace_latents = vace_encode_frames(depth_pixel_values, subject_ref_images, mask)
+                                normal_vace_latents = torch.stack(normal_vace_latents)
+                                depth_vace_latents = torch.stack(depth_vace_latents)
+                                with torch.enable_grad():
+                                    fused_vace_latents = multi_control_adapter(normal_vace_latents, depth_vace_latents)
+                            else:
+                                modality_latents = []
+                                gbuffer_pixel_values = rearrange(gbuffer_pixel_values, "b f m c h w -> m b c f h w")
+                                for modality_values in gbuffer_pixel_values:
+                                    modality_latents.append(torch.stack(vace_encode_frames(modality_values, subject_ref_images, mask)))
+                                modality_latents = torch.stack(modality_latents, dim=1)
+                                with torch.enable_grad():
+                                    fused_vace_latents = multi_control_adapter(
+                                        modality_latents,
+                                        gbuffer_availability,
+                                        is_synthetic=is_synthetic,
+                                    )
+                        else:
+                            vace_latents = vace_encode_frames(control_pixel_values, subject_ref_images, mask)
                         mask = torch.ones_like(mask)
 
                     mask_latents = vace_encode_masks(mask, subject_ref_images)
-                    vace_context = torch.stack(vace_latent(vace_latents, mask_latents))
+                    if fused_vace_latents is not None:
+                        with torch.enable_grad():
+                            vace_latents = [fused_vace_latents[i] for i in range(fused_vace_latents.size(0))]
+                            vace_context = torch.stack(vace_latent(vace_latents, mask_latents))
+                    else:
+                        vace_context = torch.stack(vace_latent(vace_latents, mask_latents))
                     
-                    if subject_ref_images is not None:
-                        for i in range(len(subject_ref_images)):
-                            if subject_ref_images[i] is not None:
-                                
-                                subject_ref_images[i] = torch.cat(
-                                    [subject_ref_image.unsqueeze(0) for subject_ref_image in subject_ref_images[i]], 2
-                                )
-                                subject_ref_images[i] = torch.cat(
-                                    [vae.encode(subject_ref_images[i][:, :, j:j+1])[0].sample() for j in range(subject_ref_images[i].size(2))], 2
-                                )
-
-                        if subject_ref_images[0] is not None:
-                            subject_ref_images = torch.cat(subject_ref_images)
-                            latents = torch.cat(
-                                [subject_ref_images, latents], dim=2
-                            )
+                    # Drop pixel tensors before transformer forward.
+                    del pixel_values, control_pixel_values, depth_pixel_values, mask_pixel_values, mask
+                    if "gbuffer_pixel_values" in locals():
+                        del gbuffer_pixel_values, gbuffer_availability, is_synthetic
+                    del ref_pixel_values, subject_images, clip_pixel_values
+                    if args.low_vram:
+                        torch.cuda.empty_cache()
 
                 # wait for latents = vae.encode(pixel_values) to complete
                 if vae_stream_1 is not None:
@@ -1967,7 +2343,8 @@ def main():
                 accelerator.log({"train_loss": train_loss}, step=global_step)
                 train_loss = 0.0
 
-                if global_step % args.checkpointing_steps == 0:
+                # 1-based step: save at 200, 400, ... as checkpoint-200, checkpoint-400, ...
+                if (global_step + 1) % args.checkpointing_steps == 0:
                     if args.use_deepspeed or args.use_fsdp or accelerator.is_main_process:
                         # _before_ saving state, check if this save would set us over the `checkpoints_total_limit`
                         if args.checkpoints_total_limit is not None:
@@ -1992,7 +2369,8 @@ def main():
                         gc.collect()
                         torch.cuda.empty_cache()
                         torch.cuda.ipc_collect()
-                        save_path = os.path.join(args.output_dir, f"checkpoint-{global_step}")
+                        ckpt_step = global_step + 1
+                        save_path = os.path.join(args.output_dir, f"checkpoint-{ckpt_step}")
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
@@ -2053,7 +2431,12 @@ def main():
         if args.use_ema:
             ema_transformer3d.copy_to(transformer3d.parameters())
 
-    if args.use_deepspeed or args.use_fsdp or accelerator.is_main_process:
+    # Final save when training did not end exactly on a periodic step (skip step 0 -> no checkpoint-0)
+    if (
+        global_step > 0
+        and (global_step + 1) % args.checkpointing_steps != 0
+        and (args.use_deepspeed or args.use_fsdp or accelerator.is_main_process)
+    ):
         gc.collect()
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()

@@ -1,18 +1,18 @@
-export MODEL_NAME="models/Diffusion_Transformer/Wan2.2-Fun-A14B-Control"
+export MODEL_NAME="/data/shared/models/Wan2.2-Fun-5B-Control"
 export DATASET_NAME="datasets/internal_datasets/"
 export DATASET_META_NAME="datasets/internal_datasets/metadata.json"
 # NCCL_IB_DISABLE=1 and NCCL_P2P_DISABLE=1 are used in multi nodes without RDMA. 
-# export NCCL_IB_DISABLE=1
-# export NCCL_P2P_DISABLE=1
-NCCL_DEBUG=INFO
+#export NCCL_IB_DISABLE=1
+#export NCCL_P2P_DISABLE=1
+#NCCL_DEBUG=INFO
 
-accelerate launch --mixed_precision="bf16" scripts/wan2.2_fun/train_control_lora.py \
-  --config_path="config/wan2.2/wan_civitai_i2v.yaml" \
+CUDA_VISIBLE_DEVICES=0,1 nohup accelerate launch --zero_stage 3 --zero3_save_16bit_model true --zero3_init_flag true --use_deepspeed --deepspeed_config_file config/zero_stage3_config.json --deepspeed_multinode_launcher standard --mixed_precision="bf16" scripts/wan2.2_fun/train_control_lora.py \
+  --config_path="config/wan2.2/wan_civitai_5b.yaml" \
   --pretrained_model_name_or_path=$MODEL_NAME \
   --train_data_dir=$DATASET_NAME \
   --train_data_meta=$DATASET_META_NAME \
   --image_sample_size=1024 \
-  --video_sample_size=256 \
+  --video_sample_size=1024 \
   --token_sample_size=512 \
   --video_sample_stride=2 \
   --video_sample_n_frames=81 \
@@ -20,7 +20,7 @@ accelerate launch --mixed_precision="bf16" scripts/wan2.2_fun/train_control_lora
   --video_repeat=1 \
   --gradient_accumulation_steps=1 \
   --dataloader_num_workers=8 \
-  --num_train_epochs=100 \
+  --num_train_epochs=200 \
   --checkpointing_steps=50 \
   --learning_rate=1e-04 \
   --seed=42 \
@@ -41,4 +41,4 @@ accelerate launch --mixed_precision="bf16" scripts/wan2.2_fun/train_control_lora
   --add_full_ref_image_in_self_attention \
   --boundary_type="low" \
   --lora_skip_name="ffn" \
-  --low_vram 
+  --low_vram 2>&1 | tee -a log.txt

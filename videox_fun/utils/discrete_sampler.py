@@ -30,9 +30,6 @@ class DiscreteSampling:
             # the number of rank in one group 
             self.group_width = world_size // self.group_num  
             self.sigma_interval = self.num_idx // self.group_num
-            print('rank=%d world_size=%d group_num=%d group_width=%d sigma_interval=%s' % (
-                  self.rank, world_size, self.group_num,
-                  self.group_width, self.sigma_interval))
         
     def __call__(self, n_samples, generator=None, device=None):
         if self.is_distributed and self.uniform_sampling: 
@@ -43,7 +40,6 @@ class DiscreteSampling:
                     (n_samples,), 
                     generator=generator, device=device,
                 )
-            print('proc[%d] idx=%s' % (self.rank, idx))
         else:   
             idx = torch.randint(
                     self.start_num_idx, self.start_num_idx + self.num_idx, (n_samples,), 

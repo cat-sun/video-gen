@@ -542,6 +542,9 @@ class WanVacePipeline(DiffusionPipeline):
         video: Union[torch.FloatTensor] = None,
         mask_video: Union[torch.FloatTensor] = None,
         control_video: Union[torch.FloatTensor] = None,
+        depth_video: Union[torch.FloatTensor] = None,
+        gbuffer_videos: Optional[List[Optional[torch.FloatTensor]]] = None,
+        gbuffer_availability: Optional[torch.FloatTensor] = None,
         subject_ref_images: Union[torch.FloatTensor] = None,
         num_frames: int = 49,
         num_inference_steps: int = 50,
@@ -658,6 +661,8 @@ class WanVacePipeline(DiffusionPipeline):
             mask_condition = torch.tile(mask_condition, [1, 3, 1, 1, 1]).to(dtype=weight_dtype, device=device)
         
         
+        depth_input_video = None
+        gbuffer_input_videos = None
         if control_video is not None:
             video_length = control_video.shape[2]
             control_video = self.image_processor.preprocess(rearrange(control_video, "b c f h w -> (b f) c h w"), height=height, width=width) 
@@ -665,6 +670,24 @@ class WanVacePipeline(DiffusionPipeline):
             input_video = rearrange(control_video, "(b f) c h w -> b c f h w", f=video_length)
 
             input_video = input_video.to(dtype=weight_dtype, device=device)
+            if depth_video is not None:
+                depth_video = self.image_processor.preprocess(rearrange(depth_video, "b c f h w -> (b f) c h w"), height=height, width=width)
+                depth_video = depth_video.to(dtype=torch.float32)
+                depth_input_video = rearrange(depth_video, "(b f) c h w -> b c f h w", f=video_length)
+                depth_input_video = depth_input_video.to(dtype=weight_dtype, device=device)
+
+            if gbuffer_videos is not None:
+                gbuffer_input_videos = []
+                for modality_video in gbuffer_videos:
+                    if modality_video is None:
+                        gbuffer_input_videos.append(torch.zeros_like(input_video))
+                        continue
+                    modality_video = self.image_processor.preprocess(
+                        rearrange(modality_video, "b c f h w -> (b f) c h w"), height=height, width=width
+                    )
+                    modality_video = modality_video.to(dtype=torch.float32)
+                    modality_video = rearrange(modality_video, "(b f) c h w -> b c f h w", f=video_length)
+                    gbuffer_input_videos.append(modality_video.to(dtype=weight_dtype, device=device))
 
         elif video is not None:
             video_length = video.shape[2]
@@ -690,7 +713,43 @@ class WanVacePipeline(DiffusionPipeline):
                     new_subject_ref_images[i].append(subject_ref_images[i, :, j:j+1])
             subject_ref_images = new_subject_ref_images
         
-        vace_latents = self.vace_encode_frames(input_video, subject_ref_images, masks=mask_condition, vae=self.vae)
+        multi_control_adapter = getattr(self, "multi_control_adapter", None)
+        if multi_control_adapter is not None and gbuffer_input_videos is not None:
+            modality_latents = []
+            for modality_video in gbuffer_input_videos:
+                modality_latents.append(torch.stack(self.vace_encode_frames(modality_video, subject_ref_images, masks=mask_condition, vae=self.vae)))
+            modality_latents = torch.stack(modality_latents, dim=1)
+            if gbuffer_availability is None:
+                gbuffer_availability = modality_latents.new_ones(modality_latents.size(0), modality_latents.size(1))
+            else:
+                gbuffer_availability = gbuffer_availability.to(device=modality_latents.device, dtype=modality_latents.dtype)
+            adapter_device = modality_latents.device
+            adapter_dtype = modality_latents.dtype
+            multi_control_adapter.to(device=adapter_device, dtype=adapter_dtype)
+            with torch.no_grad():
+                fused_vace_latents = multi_control_adapter(modality_latents, gbuffer_availability)
+            vace_latents = [fused_vace_latents[i] for i in range(fused_vace_latents.size(0))]
+            del modality_latents, fused_vace_latents
+            if getattr(self, "multi_control_adapter_offload", True):
+                multi_control_adapter.to("cpu")
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+        elif multi_control_adapter is not None and depth_input_video is not None:
+            normal_vace_latents = torch.stack(self.vace_encode_frames(input_video, subject_ref_images, masks=mask_condition, vae=self.vae))
+            depth_vace_latents = torch.stack(self.vace_encode_frames(depth_input_video, subject_ref_images, masks=mask_condition, vae=self.vae))
+            adapter_device = normal_vace_latents.device
+            adapter_dtype = normal_vace_latents.dtype
+            multi_control_adapter.to(device=adapter_device, dtype=adapter_dtype)
+            with torch.no_grad():
+                fused_vace_latents = multi_control_adapter(normal_vace_latents, depth_vace_latents)
+            vace_latents = [fused_vace_latents[i] for i in range(fused_vace_latents.size(0))]
+            del normal_vace_latents, depth_vace_latents, fused_vace_latents
+            if getattr(self, "multi_control_adapter_offload", True):
+                multi_control_adapter.to("cpu")
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+        else:
+            vace_latents = self.vace_encode_frames(input_video, subject_ref_images, masks=mask_condition, vae=self.vae)
         mask_latents = self.vace_encode_masks(mask_condition, subject_ref_images)
         vace_context = self.vace_latent(vace_latents, mask_latents)
 
@@ -728,7 +787,6 @@ class WanVacePipeline(DiffusionPipeline):
                     latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
                 vace_context_input = torch.stack(vace_context * 2) if do_classifier_free_guidance else vace_context
-
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
                 timestep = t.expand(latent_model_input.shape[0])
                 

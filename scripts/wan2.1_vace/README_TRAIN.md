@@ -24,6 +24,19 @@ The metadata_control.json is a little different from normal json in Wan-Fun, you
 ]
 ```
 
+### Wan2.1-VACE-1.3B：参考图 + 法向 → RGB 视频
+
+```bash
+python scripts/wan2.1_vace/prepare_normal_control_video.py \
+  --normal_dir datasets/normal_rgb_dataset/normal_frames/00001 \
+  --output datasets/normal_rgb_dataset/normal/00001.mp4 --fps 25
+
+export MODEL_NAME=/data/shared/models/Wan2.1-VACE-1.3B
+bash scripts/wan2.1_vace/train_normal_rgb.sh
+```
+
+关键训练参数：`--control_context_ratio=0.85 --photo_ref_ratio=0.0 --force_subject_ref --trainable_modules vace`
+
 Some parameters in the sh file can be confusing, and they are explained in this document:
 
 - `enable_bucket` is used to enable bucket training. When enabled, the model does not crop the images and videos at the center, but instead, it trains the entire images and videos after grouping them into buckets based on resolution.

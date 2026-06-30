@@ -1,0 +1,11 @@
+--2025-11-18 06:41:23--  https://meltum.jp/cdn/shop/files/20250730_0267_5.webp?v=1754043638
+Resolving meltum.jp (meltum.jp)... 23.227.38.65
+Connecting to meltum.jp (meltum.jp)|23.227.38.65|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 204029 (199K) [image/jpeg]
+Saving to: ‘asset/Tshirt.png’
+
+asset/Tshirt.png                 0%[                                                   ]       0  --.-KB/s               asset/Tshirt.png                59%[=============================>                     ] 119.49K   500KB/s               asset/Tshirt.png               100%[==================================================>] 199.25K   520KB/s    in 0.4s    
+
+2025-11-18 06:41:25 (520 KB/s) - ‘asset/Tshirt.png’ saved [204029/204029]
+

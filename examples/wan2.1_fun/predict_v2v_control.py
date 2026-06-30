@@ -84,7 +84,7 @@ riflex_k            = 6
 # Config and model path
 config_path         = "config/wan2.1/wan_civitai.yaml"
 # model path
-model_name          = "models/Diffusion_Transformer/Wan2.1-Fun-V1.1-1.3B-Control"
+model_name          = "../models/Wan2.1-Fun-V1.1-1.3B-Control"
 
 # Choose the sampler in "Flow", "Flow_Unipc", "Flow_DPM++"
 sampler_name        = "Flow"
@@ -92,7 +92,7 @@ sampler_name        = "Flow"
 # Used when the sampler is in "Flow_Unipc", "Flow_DPM++".
 # If you want to generate a 480p video, it is recommended to set the shift value to 3.0.
 # If you want to generate a 720p video, it is recommended to set the shift value to 5.0.
-shift               = 3 
+shift               = 5 
 
 # Load pretrained model if need
 transformer_path    = None
@@ -100,21 +100,24 @@ vae_path            = None
 lora_path           = None
 
 # Other params
-sample_size         = [832, 480]
+sample_size         = [1280, 704]
 video_length        = 49
-fps                 = 16
+fps                 = 8
 
 # Use torch.float16 if GPU does not support torch.bfloat16
 # ome graphics cards, such as v100, 2080ti, do not support torch.bfloat16
 weight_dtype            = torch.bfloat16
-control_video           = "asset/pose.mp4"
+control_video           = "asset/control_video.mp4"
 control_camera_txt      = None
 start_image             = None
-ref_image               = None
+ref_image               = "asset/processed_girl.png"
 
 # 使用更长的neg prompt如"模糊，突变，变形，失真，画面暗，文本字幕，画面固定，连环画，漫画，线稿，没有主体。"，可以增加稳定性
 # 在neg prompt中添加"安静，固定"等词语可以增加动态性。
-prompt              = "在这个阳光明媚的户外花园里，美女身穿一袭及膝的白色无袖连衣裙，裙摆在她轻盈的舞姿中轻柔地摆动，宛如一只翩翩起舞的蝴蝶。阳光透过树叶间洒下斑驳的光影，映衬出她柔和的脸庞和清澈的眼眸，显得格外优雅。仿佛每一个动作都在诉说着青春与活力，她在草地上旋转，裙摆随之飞扬，仿佛整个花园都因她的舞动而欢愉。周围五彩缤纷的花朵在微风中摇曳，玫瑰、菊花、百合，各自释放出阵阵香气，营造出一种轻松而愉快的氛围。"
+#prompt              = "在这个阳光明媚的户外花园里，美女身穿一袭及膝的白色无袖连衣裙，裙摆在她轻盈的舞姿中轻柔地摆动，宛如一只翩翩起舞的蝴蝶。阳光透过树叶间洒下斑驳的光影，映衬出她柔和的脸庞和清澈的眼眸，显得格外优雅。仿佛每一个动作都在诉说着青春与活力，她在草地上旋转，裙摆随之飞扬，仿佛整个花园都因她的舞动而欢愉。周围五彩缤纷的花朵在微风中摇曳，玫瑰、菊花、百合，各自释放出阵阵香气，营造出一种轻松而愉快的氛围。"
+
+prompt              = "一位年轻女子有一头长直发，发色为深棕色或接近黑色，发丝在微风中轻轻飞扬，呈现自然动态感。她的皮肤白皙，五官精致，眼睛大而明亮，眉毛修饰得自然，嘴唇微微上扬，表情柔和而略带温暖。她穿着一件白色无袖上衣，上衣带有轻薄的褶皱装饰，整体风格轻盈、夏日感强。下半身穿白色超短裙，整体衣着干净简约。她双臂交叉放在胸前，身体稍微向一侧倾斜，姿态自然、优雅。目光直视镜头，神情平静而专注，带有一丝柔美感。背景为绿色的自然环境（可能是树木或草地），呈现虚化效果（浅景深），使人物更加突出。光线柔和，似乎是自然光，光线从左侧或上方照射过来，照亮她的脸部和头发，形成微微的光晕效果，增加画面梦幻感。整张图片色调明亮柔和，强调清新、纯净的气质，像是夏日清晨或傍晚的自然光下拍摄的肖像，带有轻盈、唯美的艺术感。"
+
 negative_prompt     = "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
 
 # Using longer neg prompt such as "Blurring, mutation, deformation, distortion, dark and solid, comics, text subtitles, line art." can increase stability

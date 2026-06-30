@@ -84,7 +84,7 @@ riflex_k            = 6
 # Config and model path
 config_path         = "config/wan2.2/wan_civitai_i2v.yaml"
 # model path
-model_name          = "models/Diffusion_Transformer/Wan2.2-Fun-A14B-Control"
+model_name          = "../models/Wan2.2-Fun-A14B-Control"
 
 # Choose the sampler in "Flow", "Flow_Unipc", "Flow_DPM++"
 sampler_name        = "Flow"
