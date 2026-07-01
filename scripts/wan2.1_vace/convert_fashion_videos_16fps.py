@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Resample fashion GT + normal/depth videos to 16 fps under datasets/fashion_vace/.
+"""Resample fashion GT + normal videos to 16 fps under datasets/fashion_vace/.
 
 Originals are never modified. Layout:
   datasets/fashion_vace/videos_16fps/train/gt/{id}.mp4
   datasets/fashion_vace/videos_16fps/train/normal/{id}_normal.mp4
-  datasets/fashion_vace/videos_16fps/train/depth/{id}_depth.mp4
   datasets/fashion_vace/videos_16fps/test/gt/{id}.mp4
   datasets/fashion_vace/videos_16fps/test/normal/{id}_normal.mp4
-  datasets/fashion_vace/videos_16fps/test/depth/{id}_depth.mp4
 
 Writes metadata_train_16fps.json and metadata_test_16fps.json.
 """
@@ -49,8 +47,8 @@ def resolve_path(raw: str, project_root: Path) -> Path:
     return p.resolve()
 
 
-def split_dirs(out_root: Path, split: str) -> tuple[Path, Path, Path]:
-    return out_root / split / "gt", out_root / split / "normal", out_root / split / "depth"
+def split_dirs(out_root: Path, split: str) -> tuple[Path, Path]:
+    return out_root / split / "gt", out_root / split / "normal"
 
 
 def convert_one(src: Path, dst: Path, fps: int, crf: int, force: bool) -> tuple[str, str]:
@@ -97,29 +95,25 @@ def collect_jobs(
     crf: int,
     force: bool,
 ) -> list[tuple]:
-    out_gt, out_normal, out_depth = split_dirs(out_root, split)
+    out_gt, out_normal = split_dirs(out_root, split)
     jobs = []
     for e in entries:
         vid = e["id"]
         gt_src = resolve_path(e["file_path"], project_root)
-        norm_src = resolve_path(e.get("normal_file_path", e["control_file_path"]), project_root)
-        depth_src = resolve_path(e["depth_file_path"], project_root)
+        norm_src = resolve_path(e["control_file_path"], project_root)
         jobs.append((gt_src, out_gt / f"{vid}.mp4", fps, crf, force))
         jobs.append((norm_src, out_normal / f"{vid}_normal.mp4", fps, crf, force))
-        jobs.append((depth_src, out_depth / f"{vid}_depth.mp4", fps, crf, force))
     return jobs
 
 
 def rewrite_meta(entries: list[dict], out_root: Path, split: str) -> list[dict]:
-    out_gt, out_normal, out_depth = split_dirs(out_root, split)
+    out_gt, out_normal = split_dirs(out_root, split)
     out = []
     for e in entries:
         vid = e["id"]
         ne = dict(e)
         ne["file_path"] = str((out_gt / f"{vid}.mp4").resolve())
         ne["control_file_path"] = str((out_normal / f"{vid}_normal.mp4").resolve())
-        ne["normal_file_path"] = str((out_normal / f"{vid}_normal.mp4").resolve())
-        ne["depth_file_path"] = str((out_depth / f"{vid}_depth.mp4").resolve())
         out.append(ne)
     return out
 
@@ -132,7 +126,7 @@ def reorganize_legacy(out_root: Path, train_meta: list[dict], test_meta: list[di
         return
 
     def move_clip(split: str, vid: str) -> None:
-        out_gt, out_normal, _ = split_dirs(out_root, split)
+        out_gt, out_normal = split_dirs(out_root, split)
         out_gt.mkdir(parents=True, exist_ok=True)
         out_normal.mkdir(parents=True, exist_ok=True)
         for legacy_dir, name, dst_dir in (
@@ -181,9 +175,9 @@ def main():
         jobs.extend(collect_jobs(train_meta, ROOT, "train", out_root, args.fps, args.crf, args.force))
         jobs.extend(collect_jobs(test_meta, ROOT, "test", out_root, args.fps, args.crf, args.force))
         print(f"Videos to process: {len(jobs)} (fps={args.fps})")
-        print(f"  train: {len(train_meta)} clips x3")
-        print(f"  test:  {len(test_meta)} clips x3")
-        print(f"Output: {out_root}/{{train,test}}/{{gt,normal,depth}}")
+        print(f"  train: {len(train_meta)} clips x2")
+        print(f"  test:  {len(test_meta)} clips x2")
+        print(f"Output: {out_root}/{{train,test}}/{{gt,normal}}")
 
         if args.dry_run:
             for j in jobs[:4]:

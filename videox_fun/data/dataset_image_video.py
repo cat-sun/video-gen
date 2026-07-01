@@ -5,7 +5,7 @@ import json
 import math
 import os
 import random
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from random import shuffle
 from threading import Thread
 
@@ -381,93 +381,26 @@ class ImageVideoControlDataset(Dataset):
             else:
                 video_dir = os.path.join(self.data_root, video_id)
 
-            control_video_id = data_info.get('normal_file_path', data_info.get('control_file_path'))
-            depth_video_id = data_info.get('depth_file_path')
-            motion_video_id = data_info.get('motion_file_path', data_info.get('motion_vector_file_path'))
-            mask_video_id = data_info.get('mask_file_path', data_info.get('alpha_file_path'))
-            uv_video_id = data_info.get('uv_file_path')
-
-            def _resolve_path(path):
-                if path is None:
-                    return None
+            control_video_id = data_info.get('control_file_path')
+            if control_video_id is not None:
                 if self.data_root is None:
-                    return path
-                return os.path.join(self.data_root, path)
-
-            control_video_path = _resolve_path(control_video_id)
-            depth_video_path = _resolve_path(depth_video_id)
-            motion_video_path = _resolve_path(motion_video_id)
-            mask_video_path = _resolve_path(mask_video_id)
-            uv_video_path = _resolve_path(uv_video_id)
+                    control_video_path = control_video_id
+                else:
+                    control_video_path = os.path.join(self.data_root, control_video_id)
+            else:
+                control_video_path = None
 
             control_video_id = control_video_path
             control_pixel_values = None
-            depth_pixel_values = None
-            motion_pixel_values = None
-            gbuffer_mask_pixel_values = None
-            uv_pixel_values = None
             control_camera_values = None
-            gbuffer_paths = {
-                "depth": depth_video_path,
-                "normal": control_video_path,
-                "motion": motion_video_path,
-                "mask": mask_video_path,
-                "uv": uv_video_path,
-            }
-
-            def _read_video_values(video_path, batch_index, error_name):
-                with VideoReader_contextmanager(video_path, num_threads=1) as local_video_reader:
-                    try:
-                        sample_args = (local_video_reader, batch_index)
-                        video_values = func_timeout(
-                            VIDEO_READER_TIMEOUT, get_video_reader_batch, args=sample_args
-                        )
-                        resized_frames = []
-                        for i in range(len(video_values)):
-                            frame = video_values[i]
-                            resized_frame = resize_frame(frame, self.larger_side_of_image_and_video)
-                            resized_frames.append(resized_frame)
-                        video_values = np.array(resized_frames)
-                    except FunctionTimedOut:
-                        raise ValueError(f"Read {idx} timeout.")
-                    except Exception as e:
-                        raise ValueError(f"Failed to extract frames from {error_name} video. Error is {e}.")
-
-                    if not self.enable_bucket:
-                        video_values = torch.from_numpy(video_values).permute(0, 3, 1, 2).contiguous()
-                        video_values = video_values / 255.
-                        video_values = self.video_transforms(video_values)
-                    return video_values
 
             with VideoReader_contextmanager(video_dir, num_threads=1) as video_reader:
                 if self.align_frames_to_control and control_video_path is not None:
-                    depth_reader_context = (
-                        VideoReader_contextmanager(depth_video_path, num_threads=1)
-                        if depth_video_path is not None
-                        else nullcontext(None)
-                    )
-                    with VideoReader_contextmanager(control_video_path, num_threads=1) as control_video_reader, depth_reader_context as depth_video_reader:
+                    with VideoReader_contextmanager(control_video_path, num_threads=1) as control_video_reader:
                         control_num_frames = len(control_video_reader)
                         if control_num_frames == 0:
                             raise ValueError("No Frames in control video.")
                         num_frames_for_sampling = min(len(video_reader), control_num_frames)
-                        if depth_video_path is not None:
-                            depth_num_frames = len(depth_video_reader)
-                            if depth_num_frames == 0:
-                                raise ValueError("No Frames in depth video.")
-                            num_frames_for_sampling = min(num_frames_for_sampling, depth_num_frames)
-                        for optional_path, optional_name in (
-                            (motion_video_path, "motion"),
-                            (mask_video_path, "mask"),
-                            (uv_video_path, "uv"),
-                        ):
-                            if optional_path is None:
-                                continue
-                            with VideoReader_contextmanager(optional_path, num_threads=1) as optional_reader:
-                                optional_num_frames = len(optional_reader)
-                                if optional_num_frames == 0:
-                                    raise ValueError(f"No Frames in {optional_name} video.")
-                                num_frames_for_sampling = min(num_frames_for_sampling, optional_num_frames)
 
                         batch_index = _compute_batch_index(
                             num_frames_for_sampling,
@@ -499,18 +432,6 @@ class ImageVideoControlDataset(Dataset):
                                 resized_frame = resize_frame(frame, self.larger_side_of_image_and_video)
                                 resized_frames.append(resized_frame)
                             control_pixel_values = np.array(resized_frames)
-
-                            if depth_video_reader is not None:
-                                sample_args = (depth_video_reader, batch_index)
-                                depth_pixel_values = func_timeout(
-                                    VIDEO_READER_TIMEOUT, get_video_reader_batch, args=sample_args
-                                )
-                                resized_frames = []
-                                for i in range(len(depth_pixel_values)):
-                                    frame = depth_pixel_values[i]
-                                    resized_frame = resize_frame(frame, self.larger_side_of_image_and_video)
-                                    resized_frames.append(resized_frame)
-                                depth_pixel_values = np.array(resized_frames)
                         except FunctionTimedOut:
                             raise ValueError(f"Read {idx} timeout.")
                         except Exception as e:
@@ -609,41 +530,7 @@ class ImageVideoControlDataset(Dataset):
                         control_pixel_values = torch.zeros_like(pixel_values)
                     else:
                         control_pixel_values = np.zeros_like(pixel_values)
-
-                if depth_video_path is not None and depth_pixel_values is None:
-                    depth_pixel_values = _read_video_values(depth_video_path, batch_index, "depth")
-                elif depth_video_path is None:
-                    depth_pixel_values = control_pixel_values.copy() if self.enable_bucket else control_pixel_values.clone()
-
-                if motion_video_path is not None:
-                    motion_pixel_values = _read_video_values(motion_video_path, batch_index, "motion")
-                if mask_video_path is not None:
-                    gbuffer_mask_pixel_values = _read_video_values(mask_video_path, batch_index, "mask")
-                if uv_video_path is not None:
-                    uv_pixel_values = _read_video_values(uv_video_path, batch_index, "uv")
                 control_camera_values = None
-
-            gbuffer_pixel_values = {
-                "depth": depth_pixel_values,
-                "normal": control_pixel_values,
-                "motion": motion_pixel_values,
-                "mask": gbuffer_mask_pixel_values,
-                "uv": uv_pixel_values,
-            }
-            gbuffer_available = {
-                key: 1.0 if gbuffer_paths[key] is not None else 0.0
-                for key in gbuffer_pixel_values
-            }
-            # Keep historical metadata trainable: depth used to fall back to normal.
-            if depth_video_path is None:
-                gbuffer_available["depth"] = 0.0
-            if control_video_path is not None:
-                gbuffer_available["normal"] = 1.0
-            is_synthetic = float(
-                str(data_info.get("domain", data_info.get("data_domain", ""))).lower()
-                in {"synthetic", "render", "rendered", "sim", "simulation"}
-                or any(gbuffer_available[key] > 0 for key in ("motion", "mask", "uv"))
-            )
             
             if self.enable_subject_info:
                 if not self.enable_bucket:
@@ -677,7 +564,7 @@ class ImageVideoControlDataset(Dataset):
             else:
                 subject_image = None
 
-            return pixel_values, control_pixel_values, depth_pixel_values, subject_image, control_camera_values, text, "video", gbuffer_pixel_values, gbuffer_available, is_synthetic
+            return pixel_values, control_pixel_values, subject_image, control_camera_values, text, "video"
         else:
             image_path, text = data_info['file_path'], data_info['text']
             if self.data_root is not None:
@@ -736,15 +623,7 @@ class ImageVideoControlDataset(Dataset):
             else:
                 subject_image = None
 
-            gbuffer_pixel_values = {
-                "depth": control_image,
-                "normal": control_image,
-                "motion": None,
-                "mask": None,
-                "uv": None,
-            }
-            gbuffer_available = {"depth": 0.0, "normal": 1.0, "motion": 0.0, "mask": 0.0, "uv": 0.0}
-            return image, control_image, control_image, subject_image, None, text, 'image', gbuffer_pixel_values, gbuffer_available, 0.0
+            return image, control_image, subject_image, None, text, 'image'
 
     def __len__(self):
         return self.length
@@ -760,14 +639,10 @@ class ImageVideoControlDataset(Dataset):
                 if data_type_local != data_type:
                     raise ValueError("data_type_local != data_type")
 
-                pixel_values, control_pixel_values, depth_pixel_values, subject_image, control_camera_values, name, data_type, gbuffer_pixel_values, gbuffer_available, is_synthetic = self.get_batch(idx)
+                pixel_values, control_pixel_values, subject_image, control_camera_values, name, data_type = self.get_batch(idx)
 
                 sample["pixel_values"] = pixel_values
                 sample["control_pixel_values"] = control_pixel_values
-                sample["depth_pixel_values"] = depth_pixel_values
-                sample["gbuffer_pixel_values"] = gbuffer_pixel_values
-                sample["gbuffer_available"] = gbuffer_available
-                sample["is_synthetic"] = is_synthetic
                 sample["subject_image"] = subject_image
                 sample["text"] = name
                 sample["data_type"] = data_type

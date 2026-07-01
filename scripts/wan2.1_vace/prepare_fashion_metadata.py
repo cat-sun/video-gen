@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build Wan VACE metadata for fashion GT + normal/depth control videos.
+"""Build Wan VACE metadata for fashion GT + normal control videos.
 
 Only writes JSON (no video copy/symlink). Training reads originals directly.
 
 GT:      NormalCrafter/fashion_train_videos/*.mp4
-Control: fashion_train/{id}_normal.mp4 and optionally {id}_depth.mp4
+Control: fashion_train/{id}_normal.mp4
 """
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ from pathlib import Path
 
 DEFAULT_GT_DIR = Path(__file__).resolve().parents[2] / ".." / "NormalCrafter" / "fashion_train_videos"
 DEFAULT_NORMAL_DIR = Path("/data/shared/miaomiao/fashion_train")
-DEFAULT_DEPTH_DIR = Path("/data/shared/miaomiao/fashion_train")
 DEFAULT_OUT_DIR = Path(__file__).resolve().parents[2] / "datasets" / "fashion_vace"
 
 DEFAULT_TEXT = (
@@ -32,18 +31,6 @@ def parse_args():
         type=Path,
         default=DEFAULT_NORMAL_DIR,
         help="Directory with {id}_normal.mp4 control videos.",
-    )
-    p.add_argument(
-        "--depth_dir",
-        type=Path,
-        default=DEFAULT_DEPTH_DIR,
-        help="Directory with {id}_depth.mp4 control videos.",
-    )
-    p.add_argument(
-        "--depth_suffix",
-        type=str,
-        default="_depth.mp4",
-        help="Depth video filename suffix after the clip id.",
     )
     p.add_argument("--out_dir", type=Path, default=DEFAULT_OUT_DIR)
     p.add_argument("--test_count", type=int, default=8, help="First N clips (sorted) for test.")
@@ -74,20 +61,15 @@ def count_video_frames(path: Path) -> int:
     return len(VideoReader(str(path)))
 
 
-def make_entry(gt_name: str, gt_dir: Path, normal_dir: Path, depth_dir: Path, depth_suffix: str, text: str) -> dict:
+def make_entry(gt_name: str, gt_dir: Path, normal_dir: Path, text: str) -> dict:
     stem = gt_name[:-4]
     gt_src = (gt_dir / gt_name).resolve()
     norm_src = (normal_dir / f"{stem}_normal.mp4").resolve()
-    depth_src = (depth_dir / f"{stem}{depth_suffix}").resolve()
     if not norm_src.is_file():
         raise FileNotFoundError(f"Missing control video: {norm_src}")
-    if not depth_src.is_file():
-        raise FileNotFoundError(f"Missing depth video: {depth_src}")
     return {
         "file_path": str(gt_src),
         "control_file_path": str(norm_src),
-        "normal_file_path": str(norm_src),
-        "depth_file_path": str(depth_src),
         "text": text,
         "type": "video",
         "id": stem,
@@ -98,15 +80,12 @@ def main():
     args = parse_args()
     gt_dir = args.gt_dir.resolve()
     normal_dir = args.normal_dir.resolve()
-    depth_dir = args.depth_dir.resolve()
     out_dir = args.out_dir.resolve()
 
     if not gt_dir.is_dir():
         raise FileNotFoundError(f"GT dir not found: {gt_dir}")
     if not normal_dir.is_dir():
         raise FileNotFoundError(f"Normal dir not found: {normal_dir}")
-    if not depth_dir.is_dir():
-        raise FileNotFoundError(f"Depth dir not found: {depth_dir}")
 
     names = list_gt_videos(gt_dir)
     test_names = names[: args.test_count]
@@ -120,13 +99,12 @@ def main():
         for n in split_names:
             stem = n[:-4]
             norm_src = normal_dir / f"{stem}_normal.mp4"
-            depth_src = depth_dir / f"{stem}{args.depth_suffix}"
             if args.min_frames > 0:
-                n_ctrl = min(count_video_frames(norm_src), count_video_frames(depth_src))
+                n_ctrl = count_video_frames(norm_src)
                 if n_ctrl < args.min_frames:
                     skipped.append((n, n_ctrl))
                     continue
-            entries.append(make_entry(n, gt_dir, normal_dir, depth_dir, args.depth_suffix, args.text))
+            entries.append(make_entry(n, gt_dir, normal_dir, args.text))
         if skipped:
             print(f"Skipped {len(skipped)} (control < {args.min_frames} frames), e.g. {skipped[:3]}")
         return entries
@@ -148,7 +126,6 @@ def main():
 
     print(f"GT dir:     {gt_dir} ({len(names)} videos)")
     print(f"Normal dir: {normal_dir}")
-    print(f"Depth dir:  {depth_dir}")
     print(f"Train:      {len(train_meta)} -> {train_path}")
     print(f"Test:       {len(test_meta)} -> {test_path}")
     print("Paths: absolute only (no local video copy/symlink).")

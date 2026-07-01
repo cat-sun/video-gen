@@ -18,13 +18,11 @@ Usage:
 
 Checkpoint layout:
   {output_dir}/checkpoint-{step}/transformer/
-Use --checkpoints base to run the pretrained base model without a finetuned checkpoint.
 """
 from __future__ import annotations
 
 import argparse
 import gc
-import importlib.util
 import json
 import os
 import re
@@ -63,26 +61,8 @@ DEFAULT_NEGATIVE = (
     "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，"
     "整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，畸形，毁容"
 )
-DEFAULT_GBUFFER_MODALITIES = ("depth", "normal", "motion", "mask", "uv")
-
-
-def replace_first_frame_with_second(video: torch.Tensor) -> torch.Tensor:
-    if video is None or video.ndim < 3 or video.shape[2] < 2:
-        return video
-    video = video.clone()
-    video[:, :, 0:1] = video[:, :, 1:2]
-    return video
 
 # Fallback when metadata file_path is missing (docker / legacy 30 fps paths)
-
-
-def load_multi_control_adapter_class():
-    train_py = ROOT / "scripts/wan2.1_vace/train.py"
-    spec = importlib.util.spec_from_file_location("wan21_vace_train_for_adapter", train_py)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.MultiControlVaceAdapter
-
 GT_PATH_CANDIDATES = [
     str(ROOT / "datasets/fashion_vace/videos_16fps/test/gt"),
     "/workspace/VideoX-Fun/datasets/fashion_vace/videos_16fps/test/gt",
@@ -105,7 +85,7 @@ def parse_args():
         "--checkpoints",
         type=str,
         default="all",
-        help='Checkpoint steps: "all", "latest", "base", or comma-separated e.g. "500,3000".',
+        help='Checkpoint steps: "all", "latest", or comma-separated e.g. "500,3000".',
     )
     p.add_argument(
         "--pretrained_model_name_or_path",
@@ -152,11 +132,6 @@ def parse_args():
     p.add_argument("--num_skip_start_steps", type=int, default=5)
     p.add_argument("--teacache_offload", action="store_true")
     p.add_argument("--cfg_skip_ratio", type=float, default=0.0)
-    p.add_argument(
-        "--enable_multi_control_adapter",
-        action="store_true",
-        help="Load checkpoint multi_control_adapter and fuse normal/depth controls when available.",
-    )
     p.add_argument("--gt_dir", type=str, default="", help="Override GT video directory.")
     p.add_argument("--save_gt", action="store_true", help="Also save aligned GT clip.")
     p.add_argument("--skip_existing", action="store_true")
@@ -198,22 +173,7 @@ def resolve_sample(sample: dict, gt_dir: str | None) -> dict | None:
         return None
 
     ref_path = resolve_project_path(ref_raw)
-    ctrl_path = resolve_project_path(sample["control_file_path"])
-    depth_raw = sample.get("depth_file_path")
-    depth_path = resolve_project_path(depth_raw) if depth_raw else None
-    normal_raw = sample.get("normal_file_path")
-    normal_path = resolve_project_path(normal_raw) if normal_raw else ctrl_path
-    gbuffer_paths = {}
-    for modality in DEFAULT_GBUFFER_MODALITIES:
-        raw = sample.get(f"{modality}_file_path")
-        if raw is None and modality == "normal":
-            raw = normal_path
-        if raw is None and modality == "depth":
-            raw = depth_path
-        if raw:
-            path = resolve_project_path(raw)
-            if os.path.isfile(path):
-                gbuffer_paths[modality] = path
+    ctrl_path = sample["control_file_path"]
     if not os.path.isfile(ref_path):
         return None
     if not os.path.isfile(ctrl_path):
@@ -222,10 +182,6 @@ def resolve_sample(sample: dict, gt_dir: str | None) -> dict | None:
     out = dict(sample)
     out["ref_image_path"] = ref_path
     out["control_file_path"] = ctrl_path
-    out["normal_file_path"] = normal_path
-    if depth_path and os.path.isfile(depth_path):
-        out["depth_file_path"] = depth_path
-    out["gbuffer_paths"] = gbuffer_paths
     if "file_path" in sample:
         out["file_path"] = resolve_media_path(sample["file_path"], gt_dir)
     return out
@@ -260,27 +216,23 @@ def resolve_checkpoint_output_dir(output_dir: Path) -> Path:
     )
 
 
-def discover_checkpoints(output_dir: Path, spec: str) -> list[tuple[str, Path | None]]:
-    if spec.strip().lower() in ("base", "none", "pretrained"):
-        return [("base", None)]
-
+def discover_checkpoints(output_dir: Path, spec: str) -> list[tuple[int, Path]]:
     output_dir = resolve_checkpoint_output_dir(output_dir)
     found = _list_checkpoints(output_dir)
     if not found:
         raise FileNotFoundError(f"No checkpoint-*/transformer under {output_dir}")
 
     if spec.strip().lower() == "all":
-        return [(str(step), path) for step, path in found]
+        return found
     if spec.strip().lower() == "latest":
-        step, path = found[-1]
-        return [(str(step), path)]
+        return [found[-1]]
 
     wanted = {int(s.strip()) for s in spec.split(",") if s.strip()}
     selected = [(s, p) for s, p in found if s in wanted]
     missing = wanted - {s for s, _ in selected}
     if missing:
         raise FileNotFoundError(f"Checkpoints not found for steps: {sorted(missing)}")
-    return [(str(step), path) for step, path in selected]
+    return selected
 
 
 def aligned_video_length(control_path: str, max_frames: int, temporal_ratio: int) -> int:
@@ -307,7 +259,6 @@ def build_pipeline(
     teacache_offload: bool,
     cfg_skip_ratio: float,
     num_inference_steps: int,
-    enable_multi_control_adapter: bool,
 ) -> WanVacePipeline:
     transformer_kwargs = OmegaConf.to_container(config["transformer_additional_kwargs"])
     transformer_subpath = config["transformer_additional_kwargs"].get(
@@ -371,18 +322,6 @@ def build_pipeline(
         scheduler=scheduler,
     )
 
-    pipeline.multi_control_adapter = None
-    adapter_dir = checkpoint_dir / "multi_control_adapter" if checkpoint_dir is not None else None
-    if enable_multi_control_adapter and adapter_dir is not None and adapter_dir.is_dir():
-        adapter_cls = load_multi_control_adapter_class()
-        pipeline.multi_control_adapter = adapter_cls.from_pretrained(
-            str(adapter_dir), latent_channels=vae.config.latent_channels * 2
-        ).to(dtype=weight_dtype).eval()
-        pipeline.multi_control_adapter_offload = gpu_memory_mode != "none"
-        print(f"Loaded multi_control_adapter from {adapter_dir} on CPU")
-    elif enable_multi_control_adapter:
-        print("multi_control_adapter requested but not found for this checkpoint; using single control_video.")
-
     if gpu_memory_mode == "sequential_cpu_offload":
         replace_parameters_by_name(pipeline.transformer, ["modulation"], device=device)
         pipeline.transformer.freqs = pipeline.transformer.freqs.to(device=device)
@@ -432,8 +371,7 @@ def run_one_sample(
 ) -> torch.Tensor:
     """Same data flow as predict_v2v_control.py: ref_image_path + control_file_path."""
     ref_path = sample["ref_image_path"]
-    control_path = sample["normal_file_path"] if "normal_file_path" in sample else sample["control_file_path"]
-    depth_path = sample.get("depth_file_path")
+    control_path = sample["control_file_path"]
     temporal_ratio = int(vae.config.temporal_compression_ratio)
 
     n_raw = aligned_video_length(control_path, max_video_length, temporal_ratio)
@@ -456,35 +394,6 @@ def run_one_sample(
         fps=fps,
         ref_image=None,
     )
-    depth_video = None
-    gbuffer_videos = None
-    gbuffer_availability = None
-    if getattr(pipeline, "multi_control_adapter", None) is not None:
-        gbuffer_paths = sample.get("gbuffer_paths", {})
-        gbuffer_videos = []
-        availability = []
-        for modality in DEFAULT_GBUFFER_MODALITIES:
-            modality_path = gbuffer_paths.get(modality)
-            if modality_path and os.path.isfile(modality_path):
-                modality_video, _, _, _ = get_video_to_video_latent(
-                    modality_path,
-                    video_length=video_length,
-                    sample_size=sample_size,
-                    fps=fps,
-                    ref_image=None,
-                )
-                gbuffer_videos.append(modality_video)
-                availability.append(1.0)
-                if modality == "depth":
-                    depth_video = modality_video
-            else:
-                gbuffer_videos.append(None)
-                availability.append(0.0)
-        if not any(availability):
-            gbuffer_videos = None
-            gbuffer_availability = None
-        else:
-            gbuffer_availability = torch.tensor([availability], dtype=torch.float32)
 
     return pipeline(
         prompt,
@@ -498,9 +407,6 @@ def run_one_sample(
         video=inpaint_video,
         mask_video=inpaint_video_mask,
         control_video=control_video,
-        depth_video=depth_video,
-        gbuffer_videos=gbuffer_videos,
-        gbuffer_availability=gbuffer_availability,
         subject_ref_images=subject_ref_images,
         shift=shift,
         vace_context_scale=vace_context_scale,
@@ -567,7 +473,7 @@ def main():
     )
 
     for step, ckpt_dir in checkpoints:
-        ckpt_name = "base_model" if step == "base" else f"checkpoint-{step}"
+        ckpt_name = f"checkpoint-{step}"
         out_ckpt_dir = args.save_dir / ckpt_name
         out_ckpt_dir.mkdir(parents=True, exist_ok=True)
         print(f"\n========== {ckpt_name} ==========")
@@ -586,7 +492,6 @@ def main():
             args.teacache_offload,
             args.cfg_skip_ratio,
             args.num_inference_steps,
-            args.enable_multi_control_adapter,
         )
 
         for sample in test_samples:
@@ -618,7 +523,6 @@ def main():
                     args.vace_context_scale,
                     generator,
                 )
-                videos = replace_first_frame_with_second(videos)
                 save_videos_grid(videos, str(out_path), fps=args.fps)
                 print(f"    -> {out_path}")
 
