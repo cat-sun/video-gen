@@ -369,6 +369,24 @@ class WanVacePipeline(DiffusionPipeline):
             cat_latents.append(latent)
         return cat_latents
 
+    def prepend_vace_reference_latents(self, latents, ref_images, masks=None, vae=None):
+        vae = self.vae if vae is None else vae
+        if ref_images is None:
+            return [latent for latent in latents]
+        if masks is None:
+            masks = [None] * len(latents)
+        result = []
+        for latent, refs, sample_masks in zip(latents, ref_images, masks):
+            if refs is None:
+                result.append(latent)
+                continue
+            ref_latent = vae.encode(refs)[0].mode()
+            if sample_masks is not None:
+                ref_latent = [torch.cat((u, torch.zeros_like(u)), dim=0) for u in ref_latent]
+            assert all([x.shape[1] == 1 for x in ref_latent])
+            result.append(torch.cat([*ref_latent, latent], dim=1))
+        return result
+
     def vace_encode_masks(self, masks, ref_images=None, vae_stride=[4, 8, 8]):
         if ref_images is None:
             ref_images = [None] * len(masks)
@@ -717,7 +735,7 @@ class WanVacePipeline(DiffusionPipeline):
         if multi_control_adapter is not None and gbuffer_input_videos is not None:
             modality_latents = []
             for modality_video in gbuffer_input_videos:
-                modality_latents.append(torch.stack(self.vace_encode_frames(modality_video, subject_ref_images, masks=mask_condition, vae=self.vae)))
+                modality_latents.append(torch.stack(self.vace_encode_frames(modality_video, None, masks=mask_condition, vae=self.vae)))
             modality_latents = torch.stack(modality_latents, dim=1)
             if gbuffer_availability is None:
                 gbuffer_availability = modality_latents.new_ones(modality_latents.size(0), modality_latents.size(1))
@@ -728,21 +746,31 @@ class WanVacePipeline(DiffusionPipeline):
             multi_control_adapter.to(device=adapter_device, dtype=adapter_dtype)
             with torch.no_grad():
                 fused_vace_latents = multi_control_adapter(modality_latents, gbuffer_availability)
-            vace_latents = [fused_vace_latents[i] for i in range(fused_vace_latents.size(0))]
+            vace_latents = self.prepend_vace_reference_latents(
+                [fused_vace_latents[i] for i in range(fused_vace_latents.size(0))],
+                subject_ref_images,
+                mask_condition,
+                vae=self.vae,
+            )
             del modality_latents, fused_vace_latents
             if getattr(self, "multi_control_adapter_offload", True):
                 multi_control_adapter.to("cpu")
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
         elif multi_control_adapter is not None and depth_input_video is not None:
-            normal_vace_latents = torch.stack(self.vace_encode_frames(input_video, subject_ref_images, masks=mask_condition, vae=self.vae))
-            depth_vace_latents = torch.stack(self.vace_encode_frames(depth_input_video, subject_ref_images, masks=mask_condition, vae=self.vae))
+            normal_vace_latents = torch.stack(self.vace_encode_frames(input_video, None, masks=mask_condition, vae=self.vae))
+            depth_vace_latents = torch.stack(self.vace_encode_frames(depth_input_video, None, masks=mask_condition, vae=self.vae))
             adapter_device = normal_vace_latents.device
             adapter_dtype = normal_vace_latents.dtype
             multi_control_adapter.to(device=adapter_device, dtype=adapter_dtype)
             with torch.no_grad():
                 fused_vace_latents = multi_control_adapter(normal_vace_latents, depth_vace_latents)
-            vace_latents = [fused_vace_latents[i] for i in range(fused_vace_latents.size(0))]
+            vace_latents = self.prepend_vace_reference_latents(
+                [fused_vace_latents[i] for i in range(fused_vace_latents.size(0))],
+                subject_ref_images,
+                mask_condition,
+                vae=self.vae,
+            )
             del normal_vace_latents, depth_vace_latents, fused_vace_latents
             if getattr(self, "multi_control_adapter_offload", True):
                 multi_control_adapter.to("cpu")

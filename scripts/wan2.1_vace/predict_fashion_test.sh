@@ -6,12 +6,12 @@ cd "$ROOT"
 
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-4}"
 BASE_MODEL_DIR="/data/shared/models/Wan2.1-VACE-1.3B"
-CHECKPOINT_DIR="/data/miaomiao/checkpoints/normal-control"
+CHECKPOINT_DIR="/data/miaomiao/checkpoints/multi-control"
 CHECKPOINT_STEPS="${CHECKPOINT_STEPS:-latest}"
 METADATA_FILE="datasets/fashion_vace/metadata_test_16fps.json"
 SAMPLE_ID=""
 GT_VIDEO_DIR="${ROOT}/datasets/fashion_vace/videos_16fps/test/gt"
-RESULT_DIR="output_dir_fashion_vace/test_results/normal-control/16fps-720x944"
+RESULT_DIR="output_dir_fashion_vace/test_results/multi-control-2/16fps-720x944"
 SAMPLE_H="944"
 SAMPLE_W="720"
 VIDEO_LENGTH="81"
@@ -46,11 +46,12 @@ with open(dst, "w", encoding="utf-8") as f:
 PY
 fi
 
+
 cat <<EOF
 ========== Fashion VACE inference ==========
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-4}"
 BASE_MODEL_DIR=${BASE_MODEL_DIR}
-CHECKPOINT_DIR="/data/miaomiao/checkpoints/normal-control"
+CHECKPOINT_DIR="/data/miaomiao/checkpoints/multi-control"
 CHECKPOINT_STEPS="${CHECKPOINT_STEPS:-latest}"
 METADATA_FILE=${METADATA_FILE}
 SAMPLE_ID=${SAMPLE_ID:-<all>}

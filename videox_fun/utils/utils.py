@@ -28,6 +28,13 @@ def get_width_and_height_from_image_and_base_resolution(image, base_resolution):
     height_slider = round(original_height * ratio)
     return height_slider, width_slider
 
+def calculate_dimensions(target_area, ratio):
+    width = (target_area * ratio) ** 0.5
+    height = target_area / width
+    width = int(round(width / 16) * 16)
+    height = int(round(height / 16) * 16)
+    return max(width, 16), max(height, 16)
+
 def color_transfer(sc, dc):
     """
     Transfer color distribution from of sc, referred to dc.

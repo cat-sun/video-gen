@@ -61,6 +61,7 @@ DEFAULT_NEGATIVE = (
     "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，"
     "整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，畸形，毁容"
 )
+DEFAULT_GBUFFER_MODALITIES = ("depth", "normal", "uv", "motion", "mask")
 
 # Fallback when metadata file_path is missing (docker / legacy 30 fps paths)
 GT_PATH_CANDIDATES = [
@@ -173,15 +174,34 @@ def resolve_sample(sample: dict, gt_dir: str | None) -> dict | None:
         return None
 
     ref_path = resolve_project_path(ref_raw)
-    ctrl_path = sample["control_file_path"]
+    ctrl_path = sample.get("control_file_path") or sample.get("normal_file_path")
     if not os.path.isfile(ref_path):
         return None
-    if not os.path.isfile(ctrl_path):
+    if ctrl_path is None or not os.path.isfile(ctrl_path):
         return None
 
     out = dict(sample)
     out["ref_image_path"] = ref_path
     out["control_file_path"] = ctrl_path
+    gbuffer_paths = sample.get("gbuffer_paths") or sample.get("gbuffer_file_paths") or {}
+    if isinstance(gbuffer_paths, list):
+        gbuffer_paths = {
+            name: gbuffer_paths[i]
+            for i, name in enumerate(DEFAULT_GBUFFER_MODALITIES)
+            if i < len(gbuffer_paths)
+        }
+    else:
+        gbuffer_paths = dict(gbuffer_paths)
+    for modality in DEFAULT_GBUFFER_MODALITIES:
+        field_path = sample.get(f"{modality}_file_path")
+        if field_path is not None:
+            gbuffer_paths[modality] = field_path
+    gbuffer_paths.setdefault("normal", ctrl_path)
+    out["gbuffer_paths"] = {
+        modality: resolve_project_path(path)
+        for modality, path in gbuffer_paths.items()
+        if path is not None
+    }
     if "file_path" in sample:
         out["file_path"] = resolve_media_path(sample["file_path"], gt_dir)
     return out
@@ -321,6 +341,14 @@ def build_pipeline(
         text_encoder=text_encoder,
         scheduler=scheduler,
     )
+    adapter_dir = checkpoint_dir / "multi_control_adapter" if checkpoint_dir is not None else None
+    if adapter_dir is not None and adapter_dir.is_dir():
+        from videox_fun.models.multi_control_adapter import MultiControlVaceAdapter
+
+        pipeline.multi_control_adapter = MultiControlVaceAdapter.from_pretrained(str(adapter_dir))
+        pipeline.multi_control_adapter.eval()
+        pipeline.multi_control_adapter_offload = True
+        print(f"Loaded multi_control_adapter from {adapter_dir}")
 
     if gpu_memory_mode == "sequential_cpu_offload":
         replace_parameters_by_name(pipeline.transformer, ["modulation"], device=device)
@@ -394,6 +422,29 @@ def run_one_sample(
         fps=fps,
         ref_image=None,
     )
+    gbuffer_videos = None
+    gbuffer_availability = None
+    if getattr(pipeline, "multi_control_adapter", None) is not None:
+        gbuffer_videos = []
+        availability = []
+        gbuffer_paths = sample.get("gbuffer_paths") or {}
+        modalities = getattr(pipeline.multi_control_adapter, "modalities", DEFAULT_GBUFFER_MODALITIES)
+        for modality in modalities:
+            modality_path = gbuffer_paths.get(modality)
+            if modality_path and os.path.isfile(modality_path):
+                modality_video, _, _, _ = get_video_to_video_latent(
+                    modality_path,
+                    video_length=video_length,
+                    sample_size=sample_size,
+                    fps=fps,
+                    ref_image=None,
+                )
+                gbuffer_videos.append(modality_video)
+                availability.append(1.0)
+            else:
+                gbuffer_videos.append(None)
+                availability.append(0.0)
+        gbuffer_availability = torch.tensor([availability], dtype=torch.float32)
 
     return pipeline(
         prompt,
@@ -407,6 +458,8 @@ def run_one_sample(
         video=inpaint_video,
         mask_video=inpaint_video_mask,
         control_video=control_video,
+        gbuffer_videos=gbuffer_videos,
+        gbuffer_availability=gbuffer_availability,
         subject_ref_images=subject_ref_images,
         shift=shift,
         vace_context_scale=vace_context_scale,

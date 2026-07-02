@@ -30,6 +30,66 @@ from .utils import (VIDEO_READER_TIMEOUT, Camera, VideoReader_contextmanager,
                     process_pose_params, ray_condition, resize_frame,
                     resize_image_with_target_area)
 
+DEFAULT_GBUFFER_MODALITIES = ("depth", "normal", "uv", "motion", "mask")
+
+
+def _resolve_optional_path(data_root, path):
+    if path is None:
+        return None
+    if data_root is None or os.path.isabs(path):
+        return path
+    return os.path.join(data_root, path)
+
+
+def infer_gbuffer_modalities(dataset):
+    found = set()
+    has_control = False
+    for data_info in dataset:
+        gbuffer_paths = data_info.get("gbuffer_paths") or data_info.get("gbuffer_file_paths") or {}
+        if isinstance(gbuffer_paths, dict):
+            found.update(name for name, path in gbuffer_paths.items() if path is not None)
+        elif isinstance(gbuffer_paths, list):
+            for i, path in enumerate(gbuffer_paths):
+                if path is not None and i < len(DEFAULT_GBUFFER_MODALITIES):
+                    found.add(DEFAULT_GBUFFER_MODALITIES[i])
+
+        for modality in DEFAULT_GBUFFER_MODALITIES:
+            if data_info.get(f"{modality}_file_path") is not None:
+                found.add(modality)
+        if data_info.get("control_file_path") is not None:
+            has_control = True
+
+    modalities = [modality for modality in DEFAULT_GBUFFER_MODALITIES if modality in found]
+    if not modalities and has_control:
+        modalities = ["normal"]
+    return modalities
+
+
+def _build_gbuffer_paths(data_info, data_root, control_video_path=None, modalities=None):
+    modalities = tuple(modalities or infer_gbuffer_modalities([data_info]) or DEFAULT_GBUFFER_MODALITIES)
+    gbuffer_paths = data_info.get("gbuffer_paths") or data_info.get("gbuffer_file_paths") or {}
+    if isinstance(gbuffer_paths, list):
+        gbuffer_paths = {
+            name: gbuffer_paths[i]
+            for i, name in enumerate(modalities)
+            if i < len(gbuffer_paths)
+        }
+    else:
+        gbuffer_paths = dict(gbuffer_paths)
+
+    for modality in modalities:
+        field_path = data_info.get(f"{modality}_file_path")
+        if field_path is not None:
+            gbuffer_paths[modality] = field_path
+    if control_video_path is not None and "normal" in modalities and "normal" not in gbuffer_paths:
+        gbuffer_paths["normal"] = control_video_path
+
+    return {
+        modality: _resolve_optional_path(data_root, path)
+        for modality, path in gbuffer_paths.items()
+        if path is not None and modality in modalities
+    }
+
 
 class ImageVideoSampler(BatchSampler):
     """A sampler wrapper for grouping images with similar aspect ratio into a same batch.
@@ -301,6 +361,7 @@ class ImageVideoControlDataset(Dataset):
         enable_subject_info=False,
         padding_subject_info=True,
         align_frames_to_control=False,
+        gbuffer_modalities=None,
     ):
         # Loading annotations from files
         print(f"loading annotations from {ann_path} ...")
@@ -329,6 +390,9 @@ class ImageVideoControlDataset(Dataset):
 
         self.length = len(self.dataset)
         print(f"data scale: {self.length}")
+        self.gbuffer_modalities = tuple(gbuffer_modalities or infer_gbuffer_modalities(self.dataset))
+        if self.gbuffer_modalities:
+            print(f"gbuffer modalities: {', '.join(self.gbuffer_modalities)}")
         # TODO: enable bucket training
         self.enable_bucket = enable_bucket
         self.text_drop_ratio = text_drop_ratio
@@ -392,10 +456,66 @@ class ImageVideoControlDataset(Dataset):
 
             control_video_id = control_video_path
             control_pixel_values = None
+            gbuffer_paths = _build_gbuffer_paths(
+                data_info, self.data_root, control_video_path, self.gbuffer_modalities
+            )
+            gbuffer_pixel_values = None
+            gbuffer_availability = None
             control_camera_values = None
 
+            def read_video_frames(video_path, batch_index):
+                with VideoReader_contextmanager(video_path, num_threads=1) as reader:
+                    sample_args = (reader, batch_index)
+                    values = func_timeout(
+                        VIDEO_READER_TIMEOUT, get_video_reader_batch, args=sample_args
+                    )
+                    resized_frames = []
+                    for i in range(len(values)):
+                        frame = values[i]
+                        resized_frame = resize_frame(frame, self.larger_side_of_image_and_video)
+                        resized_frames.append(resized_frame)
+                    return np.array(resized_frames)
+
             with VideoReader_contextmanager(video_dir, num_threads=1) as video_reader:
-                if self.align_frames_to_control and control_video_path is not None:
+                if self.align_frames_to_control and (control_video_path is not None or gbuffer_paths):
+                    aligned_lengths = [len(video_reader)]
+                    for modality_path in [control_video_path, *gbuffer_paths.values()]:
+                        if modality_path is None:
+                            continue
+                        with VideoReader_contextmanager(modality_path, num_threads=1) as modality_reader:
+                            modality_num_frames = len(modality_reader)
+                        if modality_num_frames == 0:
+                            raise ValueError(f"No Frames in control/G-buffer video: {modality_path}")
+                        aligned_lengths.append(modality_num_frames)
+                    num_frames_for_sampling = min(aligned_lengths)
+
+                    batch_index = _compute_batch_index(
+                        num_frames_for_sampling,
+                        self.video_sample_n_frames,
+                        self.video_sample_stride,
+                        self.video_length_drop_start,
+                        self.video_length_drop_end,
+                    )
+
+                    try:
+                        sample_args = (video_reader, batch_index)
+                        pixel_values = func_timeout(
+                            VIDEO_READER_TIMEOUT, get_video_reader_batch, args=sample_args
+                        )
+                        resized_frames = []
+                        for i in range(len(pixel_values)):
+                            frame = pixel_values[i]
+                            resized_frame = resize_frame(frame, self.larger_side_of_image_and_video)
+                            resized_frames.append(resized_frame)
+                        pixel_values = np.array(resized_frames)
+                    except FunctionTimedOut:
+                        raise ValueError(f"Read {idx} timeout.")
+                    except Exception as e:
+                        raise ValueError(f"Failed to extract frames from video. Error is {e}.")
+
+                    if control_video_path is not None:
+                        control_pixel_values = read_video_frames(control_video_path, batch_index)
+                elif self.align_frames_to_control and control_video_path is not None:
                     with VideoReader_contextmanager(control_video_path, num_threads=1) as control_video_reader:
                         control_num_frames = len(control_video_reader)
                         if control_num_frames == 0:
@@ -473,6 +593,25 @@ class ImageVideoControlDataset(Dataset):
 
                 if random.random() < self.text_drop_ratio:
                     text = ''
+
+                if gbuffer_paths:
+                    gbuffer_values = []
+                    gbuffer_flags = []
+                    fallback_values = control_pixel_values if control_pixel_values is not None else pixel_values
+                    for modality in self.gbuffer_modalities:
+                        modality_path = gbuffer_paths.get(modality)
+                        if modality_path is None:
+                            gbuffer_values.append(np.zeros_like(fallback_values))
+                            gbuffer_flags.append(0.0)
+                            continue
+                        try:
+                            modality_values = read_video_frames(modality_path, batch_index)
+                            gbuffer_values.append(modality_values)
+                            gbuffer_flags.append(1.0)
+                        except Exception as e:
+                            raise ValueError(f"Failed to read {modality} G-buffer from {modality_path}. Error is {e}.")
+                    gbuffer_pixel_values = np.stack(gbuffer_values)
+                    gbuffer_availability = np.array(gbuffer_flags, dtype=np.float32)
 
             if self.enable_camera_info:
                 if control_video_id.lower().endswith('.txt'):
@@ -564,7 +703,16 @@ class ImageVideoControlDataset(Dataset):
             else:
                 subject_image = None
 
-            return pixel_values, control_pixel_values, subject_image, control_camera_values, text, "video"
+            return (
+                pixel_values,
+                control_pixel_values,
+                subject_image,
+                control_camera_values,
+                text,
+                "video",
+                gbuffer_pixel_values,
+                gbuffer_availability,
+            )
         else:
             image_path, text = data_info['file_path'], data_info['text']
             if self.data_root is not None:
@@ -623,7 +771,7 @@ class ImageVideoControlDataset(Dataset):
             else:
                 subject_image = None
 
-            return image, control_image, subject_image, None, text, 'image'
+            return image, control_image, subject_image, None, text, 'image', None, None
 
     def __len__(self):
         return self.length
@@ -639,10 +787,22 @@ class ImageVideoControlDataset(Dataset):
                 if data_type_local != data_type:
                     raise ValueError("data_type_local != data_type")
 
-                pixel_values, control_pixel_values, subject_image, control_camera_values, name, data_type = self.get_batch(idx)
+                (
+                    pixel_values,
+                    control_pixel_values,
+                    subject_image,
+                    control_camera_values,
+                    name,
+                    data_type,
+                    gbuffer_pixel_values,
+                    gbuffer_availability,
+                ) = self.get_batch(idx)
 
                 sample["pixel_values"] = pixel_values
                 sample["control_pixel_values"] = control_pixel_values
+                if gbuffer_pixel_values is not None:
+                    sample["gbuffer_pixel_values"] = gbuffer_pixel_values
+                    sample["gbuffer_availability"] = gbuffer_availability
                 sample["subject_image"] = subject_image
                 sample["text"] = name
                 sample["data_type"] = data_type

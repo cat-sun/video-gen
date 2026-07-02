@@ -41,7 +41,7 @@ export NO_ALBUMENTATIONS_UPDATE="${NO_ALBUMENTATIONS_UPDATE:-1}"
 export NCCL_ASYNC_ERROR_HANDLING="${NCCL_ASYNC_ERROR_HANDLING:-1}"
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 
-export OUTPUT_DIR="${OUTPUT_DIR:-/data/miaomiao/checkpoints/normal-control}"
+export OUTPUT_DIR="${OUTPUT_DIR:-/data/miaomiao/checkpoints/multi-control}"
 LOG_DIR="${OUTPUT_DIR}/train_logs"
 mkdir -p "${LOG_DIR}"
 RUN_TS="$(date +%Y%m%d_%H%M%S)"
@@ -112,6 +112,7 @@ CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}" accelerate launch --num_processes
   --photo_ref_ratio=1.0 \
   --force_subject_ref \
   --align_gt_frames_to_control \
+  --enable_multi_control_adapter \
   --trainable_modules "vace" \
   "${RESUME_ARGS[@]}" \
   2>&1 | tee -a "${TRAIN_LOG_FILE}"
