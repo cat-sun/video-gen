@@ -22,26 +22,30 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-export MODEL_NAME="${MODEL_NAME:-/data/shared/models/Wan2.1-VACE-1.3B}"
+export MODEL_NAME="${MODEL_NAME:-../models/Wan2.1-VACE-1.3B}"
 export DATASET_NAME="${DATASET_NAME:-}"
 export DATASET_META_NAME="${DATASET_META_NAME:-datasets/fashion_vace/metadata_train.json}"
 
 # 81 帧双视频解码极占内存：默认 0 worker（主进程加载），避免 worker 被 OOM Kill
 # 若内存充足可设 DATALOADER_NUM_WORKERS=1
-export NUM_PROCESSES="${NUM_PROCESSES:-4}"
-export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-4,5,6,7}"
+export NUM_PROCESSES="${NUM_PROCESSES:-1}"
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export DATALOADER_NUM_WORKERS="${DATALOADER_NUM_WORKERS:-0}"
 # 竖屏素材（约 720×940）：sample_size = [H, W] = [576, 320]
 # 32GB 卡 + 81 帧；显存不够可改为 480×272 等（须为 16 的倍数）
-export FIX_SAMPLE_H="${FIX_SAMPLE_H:-576}"
-export FIX_SAMPLE_W="${FIX_SAMPLE_W:-448}"
+export FIX_SAMPLE_H="${FIX_SAMPLE_H:-768}"
+export FIX_SAMPLE_W="${FIX_SAMPLE_W:-576}"
 export VIDEO_SAMPLE_N_FRAMES="${VIDEO_SAMPLE_N_FRAMES:-81}"
+export VACE_REFERENCE_RESIDUAL_SCALE="${VACE_REFERENCE_RESIDUAL_SCALE:-1.0}"
+export VACE_CONTROL_RESIDUAL_SCALE="${VACE_CONTROL_RESIDUAL_SCALE:-0.8}"
+export TRAINABLE_MODULES="${TRAINABLE_MODULES:-vace}"
+export VIDEOX_VACE_DEBUG="${VIDEOX_VACE_DEBUG:-2}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export NO_ALBUMENTATIONS_UPDATE="${NO_ALBUMENTATIONS_UPDATE:-1}"
 export NCCL_ASYNC_ERROR_HANDLING="${NCCL_ASYNC_ERROR_HANDLING:-1}"
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 
-export OUTPUT_DIR="${OUTPUT_DIR:-/data/miaomiao/checkpoints/multi-control}"
+export OUTPUT_DIR="${OUTPUT_DIR:-checkpoints/reference-control-disentangled-2}"
 LOG_DIR="${OUTPUT_DIR}/train_logs"
 mkdir -p "${LOG_DIR}"
 RUN_TS="$(date +%Y%m%d_%H%M%S)"
@@ -72,12 +76,24 @@ fi
   echo "DATASET_META_NAME=${DATASET_META_NAME}"
   echo "NUM_PROCESSES=${NUM_PROCESSES} CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
   echo "FIX_SAMPLE_H/W=${FIX_SAMPLE_H}/${FIX_SAMPLE_W} VIDEO_SAMPLE_N_FRAMES=${VIDEO_SAMPLE_N_FRAMES}"
+  echo "VACE_REFERENCE_RESIDUAL_SCALE=${VACE_REFERENCE_RESIDUAL_SCALE}"
+  echo "VACE_CONTROL_RESIDUAL_SCALE=${VACE_CONTROL_RESIDUAL_SCALE}"
+  echo "TRAINABLE_MODULES=${TRAINABLE_MODULES}"
+  echo "VIDEOX_VACE_DEBUG=${VIDEOX_VACE_DEBUG}"
   echo "RESUME_FROM_CHECKPOINT=${RESUME_FROM_CHECKPOINT:-}"
   echo "=========================================="
 } | tee "${TRAIN_LOG_FILE}"
 
 set -o pipefail
-CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}" accelerate launch --num_processes="${NUM_PROCESSES}" --mixed_precision="bf16" scripts/wan2.1_vace/train.py \
+PYTHON_BIN="${PYTHON_BIN:-python}"
+if ! "${PYTHON_BIN}" -c "import accelerate" >/dev/null 2>&1; then
+  echo "Missing Python package: accelerate"
+  echo "Install it in the same environment used to run this script:"
+  echo "  ${PYTHON_BIN} -m pip install -U accelerate"
+  exit 1
+fi
+
+CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}" "${PYTHON_BIN}" -m accelerate.commands.launch --num_processes="${NUM_PROCESSES}" --mixed_precision="bf16" scripts/wan2.1_vace/train.py \
   --config_path="config/wan2.1/wan_civitai.yaml" \
   --pretrained_model_name_or_path="$MODEL_NAME" \
   "${TRAIN_DATA_DIR_ARGS[@]}" \
@@ -92,7 +108,7 @@ CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}" accelerate launch --num_processes
   --gradient_accumulation_steps=1 \
   --dataloader_num_workers="${DATALOADER_NUM_WORKERS}" \
   --max_train_steps=1000 \
-  --checkpointing_steps=50 \
+  --checkpointing_steps=100 \
   --learning_rate=2e-05 \
   --lr_scheduler="constant_with_warmup" \
   --lr_warmup_steps=100 \
@@ -113,7 +129,9 @@ CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}" accelerate launch --num_processes
   --force_subject_ref \
   --align_gt_frames_to_control \
   --enable_multi_control_adapter \
-  --trainable_modules "vace" \
+  --vace_reference_context_scale="${VACE_REFERENCE_RESIDUAL_SCALE}" \
+  --vace_control_context_scale="${VACE_CONTROL_RESIDUAL_SCALE}" \
+  --trainable_modules "${TRAINABLE_MODULES}" \
   "${RESUME_ARGS[@]}" \
   2>&1 | tee -a "${TRAIN_LOG_FILE}"
 exit "${PIPESTATUS[0]}"

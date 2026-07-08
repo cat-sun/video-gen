@@ -75,18 +75,40 @@ class BaseWanAttentionBlock(WanAttentionBlock):
         qk_norm=True,
         cross_attn_norm=False,
         eps=1e-6,
-        block_id=None
+        block_id=None,
     ):
         super().__init__(cross_attn_type, dim, ffn_dim, num_heads, window_size, qk_norm, cross_attn_norm, eps)
         self.block_id = block_id
 
-    def forward(self, x, hints, context_scale=1.0, **kwargs):
+    def forward(
+        self,
+        x,
+        hints=None,
+        context_scale=1.0,
+        reference_hints=None,
+        control_hints=None,
+        reference_context_scale=1.0,
+        control_context_scale=1.0,
+        **kwargs,
+    ):
         x = super().forward(x, **kwargs)
         if self.block_id is not None:
-            if VIDEOX_OFFLOAD_VACE_LATENTS:
-                x = x + hints[self.block_id].to(x.device) * context_scale
+            if reference_hints is not None or control_hints is not None:
+                if control_hints is not None:
+                    control_hint = control_hints[self.block_id]
+                    if VIDEOX_OFFLOAD_VACE_LATENTS or control_hint.device != x.device:
+                        control_hint = control_hint.to(x.device)
+                    x = x + control_hint * control_context_scale
+                if reference_hints is not None:
+                    reference_hint = reference_hints[self.block_id]
+                    if VIDEOX_OFFLOAD_VACE_LATENTS or reference_hint.device != x.device:
+                        reference_hint = reference_hint.to(x.device)
+                    x = x + reference_hint * reference_context_scale
             else:
-                x = x + hints[self.block_id] * context_scale
+                if VIDEOX_OFFLOAD_VACE_LATENTS:
+                    x = x + hints[self.block_id].to(x.device) * context_scale
+                else:
+                    x = x + hints[self.block_id] * context_scale
         return x
     
     
@@ -188,6 +210,10 @@ class VaceWanTransformer3DModel(WanTransformer3DModel):
         context,
         seq_len,
         vace_context_scale=1.0,
+        vace_reference_context=None,
+        vace_control_context=None,
+        vace_reference_context_scale=1.0,
+        vace_control_context_scale=None,
         clip_fea=None,
         y=None,
         cond_flag=True
@@ -268,10 +294,59 @@ class VaceWanTransformer3DModel(WanTransformer3DModel):
             context_lens=context_lens,
             dtype=dtype,
             t=t)
-        hints = self.forward_vace(x, vace_context, seq_len, kwargs)
+        if vace_reference_context is not None or vace_control_context is not None:
+            if vace_control_context_scale is None:
+                vace_control_context_scale = vace_context_scale
+            hints = None
+            reference_hints = None
+            control_hints = None
+            if vace_control_context is not None and vace_control_context_scale != 0:
+                control_hints = self.forward_vace(x, vace_control_context, seq_len, kwargs)
+            if vace_reference_context is not None and vace_reference_context_scale != 0:
+                reference_hints = self.forward_vace(x, vace_reference_context, seq_len, kwargs)
+            context_scale = 1.0
+        else:
+            hints = self.forward_vace(x, vace_context, seq_len, kwargs)
+            reference_hints = None
+            control_hints = None
+            context_scale = vace_context_scale
+
+        debug_limit = int(os.environ.get("VIDEOX_VACE_DEBUG", "0") or 0)
+        debug_count = getattr(self, "_vace_forward_debug_count", 0)
+        if debug_limit and debug_count < debug_limit:
+            def _hint_norm(values, index):
+                if values is None or len(values) == 0:
+                    return None
+                return values[index].detach().float().norm().item()
+
+            def _context_norm(values):
+                if values is None:
+                    return None
+                total = 0.0
+                for value in values:
+                    total += value.detach().float().norm().item()
+                return total / max(len(values), 1)
+
+            print(
+                "[VACE_DEBUG] forward "
+                f"ref_ctx_norm={_context_norm(vace_reference_context)} "
+                f"ctrl_ctx_norm={_context_norm(vace_control_context)} "
+                f"ref_hint_first={_hint_norm(reference_hints, 0)} "
+                f"ref_hint_last={_hint_norm(reference_hints, -1)} "
+                f"ctrl_hint_first={_hint_norm(control_hints, 0)} "
+                f"ctrl_hint_last={_hint_norm(control_hints, -1)} "
+                f"ref_scale={vace_reference_context_scale} "
+                f"ctrl_scale={vace_control_context_scale if vace_control_context_scale is not None else vace_context_scale}",
+                flush=True,
+            )
+            self._vace_forward_debug_count = debug_count + 1
 
         kwargs['hints'] = hints
-        kwargs['context_scale'] = vace_context_scale
+        kwargs['context_scale'] = context_scale
+        kwargs['reference_hints'] = reference_hints
+        kwargs['control_hints'] = control_hints
+        kwargs['reference_context_scale'] = vace_reference_context_scale
+        kwargs['control_context_scale'] = vace_control_context_scale if vace_control_context_scale is not None else vace_context_scale
 
         # TeaCache
         if self.teacache is not None:
@@ -329,7 +404,11 @@ class VaceWanTransformer3DModel(WanTransformer3DModel):
                             create_custom_forward(block, **extra_kwargs),
                             x,
                             hints,
-                            vace_context_scale,
+                            context_scale,
+                            reference_hints,
+                            control_hints,
+                            vace_reference_context_scale,
+                            vace_control_context_scale if vace_control_context_scale is not None else vace_context_scale,
                             **ckpt_kwargs,
                         )
                     else:
@@ -363,7 +442,11 @@ class VaceWanTransformer3DModel(WanTransformer3DModel):
                         create_custom_forward(block, **extra_kwargs),
                         x,
                         hints,
-                        vace_context_scale,
+                        context_scale,
+                        reference_hints,
+                        control_hints,
+                        vace_reference_context_scale,
+                        vace_control_context_scale if vace_control_context_scale is not None else vace_context_scale,
                         **ckpt_kwargs,
                     )
                 else:

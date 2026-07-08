@@ -1,5 +1,6 @@
 import inspect
 import math
+import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -423,6 +424,45 @@ class WanVacePipeline(DiffusionPipeline):
     def vace_latent(self, z, m):
         return [torch.cat([zz, mm], dim=0) for zz, mm in zip(z, m)]
 
+    def split_vace_reference_control_context(self, vace_context, ref_images):
+        if ref_images is None:
+            return vace_context, None
+
+        control_context = []
+        reference_context = []
+        has_reference = False
+        debug_limit = int(os.environ.get("VIDEOX_VACE_DEBUG", "0") or 0)
+        debug_count = getattr(self, "_vace_split_debug_count", 0)
+        for context, refs in zip(vace_context, ref_images):
+            ref_len = 0 if refs is None else len(refs)
+            if ref_len <= 0:
+                control_context.append(context)
+                reference_context.append(torch.zeros_like(context))
+                continue
+
+            has_reference = True
+            control = torch.zeros_like(context)
+            reference = torch.zeros_like(context)
+            reference[:, :ref_len] = context[:, :ref_len]
+            control[:, ref_len:] = context[:, ref_len:]
+            control_context.append(control)
+            reference_context.append(reference)
+            if debug_limit and debug_count < debug_limit:
+                with torch.no_grad():
+                    print(
+                        "[VACE_DEBUG] split "
+                        f"ref_len={ref_len} "
+                        f"context_shape={tuple(context.shape)} "
+                        f"context_norm={context.float().norm().item():.6f} "
+                        f"reference_norm={reference.float().norm().item():.6f} "
+                        f"control_norm={control.float().norm().item():.6f}",
+                        flush=True,
+                    )
+                debug_count += 1
+
+        self._vace_split_debug_count = debug_count
+        return control_context, reference_context if has_reference else None
+
     def prepare_control_latents(
         self, control, control_image, batch_size, height, width, dtype, device, generator, do_classifier_free_guidance
     ):
@@ -584,7 +624,9 @@ class WanVacePipeline(DiffusionPipeline):
         max_sequence_length: int = 512,
         comfyui_progressbar: bool = False,
         shift: int = 5,
-        vace_context_scale: float = 1.0
+        vace_context_scale: float = 1.0,
+        vace_reference_context_scale: float = 1.0,
+        vace_control_context_scale: Optional[float] = None
     ) -> Union[WanPipelineOutput, Tuple]:
         """
         Function invoked when calling the pipeline for generation.
@@ -780,6 +822,9 @@ class WanVacePipeline(DiffusionPipeline):
             vace_latents = self.vace_encode_frames(input_video, subject_ref_images, masks=mask_condition, vae=self.vae)
         mask_latents = self.vace_encode_masks(mask_condition, subject_ref_images)
         vace_context = self.vace_latent(vace_latents, mask_latents)
+        vace_control_context, vace_reference_context = self.split_vace_reference_control_context(
+            vace_context, subject_ref_images
+        )
 
         # 5. Prepare latents.
         latents = self.prepare_latents(
@@ -815,6 +860,11 @@ class WanVacePipeline(DiffusionPipeline):
                     latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
                 vace_context_input = torch.stack(vace_context * 2) if do_classifier_free_guidance else vace_context
+                vace_control_context_input = torch.stack(vace_control_context * 2) if do_classifier_free_guidance else vace_control_context
+                if vace_reference_context is not None:
+                    vace_reference_context_input = torch.stack(vace_reference_context * 2) if do_classifier_free_guidance else vace_reference_context
+                else:
+                    vace_reference_context_input = None
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
                 timestep = t.expand(latent_model_input.shape[0])
                 
@@ -826,7 +876,11 @@ class WanVacePipeline(DiffusionPipeline):
                         t=timestep,
                         vace_context=vace_context_input,
                         seq_len=seq_len,
-                        vace_context_scale=vace_context_scale
+                        vace_context_scale=vace_context_scale,
+                        vace_reference_context=vace_reference_context_input,
+                        vace_control_context=vace_control_context_input,
+                        vace_reference_context_scale=vace_reference_context_scale,
+                        vace_control_context_scale=vace_control_context_scale,
                     )
 
                 # perform guidance
