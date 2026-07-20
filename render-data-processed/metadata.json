@@ -1,0 +1,40 @@
+[
+  {
+    "file_path": "render-data-training/gt/004.mp4",
+    "control_file_path": "render-data-training/normal/004_normal.mp4",
+    "depth_file_path": "render-data-training/depth/004_depth.mp4",
+    "normal_file_path": "render-data-training/normal/004_normal.mp4",
+    "uv_file_path": "render-data-training/uv/004_uv.mp4",
+    "motion_file_path": "render-data-training/motion/004_motion.mp4",
+    "mask_file_path": "render-data-training/mask/004_mask.mp4",
+    "gbuffer_paths": {
+      "depth": "render-data-training/depth/004_depth.mp4",
+      "normal": "render-data-training/normal/004_normal.mp4",
+      "uv": "render-data-training/uv/004_uv.mp4",
+      "motion": "render-data-training/motion/004_motion.mp4",
+      "mask": "render-data-training/mask/004_mask.mp4"
+    },
+    "text": "high-quality rendered fashion video, smooth motion, consistent garment texture, realistic fabric dynamics, clean lighting",
+    "type": "video",
+    "id": "004"
+  },
+  {
+    "file_path": "render-data-training/gt/023.mp4",
+    "control_file_path": "render-data-training/normal/023_normal.mp4",
+    "depth_file_path": "render-data-training/depth/023_depth.mp4",
+    "normal_file_path": "render-data-training/normal/023_normal.mp4",
+    "uv_file_path": "render-data-training/uv/023_uv.mp4",
+    "motion_file_path": "render-data-training/motion/023_motion.mp4",
+    "mask_file_path": "render-data-training/mask/023_mask.mp4",
+    "gbuffer_paths": {
+      "depth": "render-data-training/depth/023_depth.mp4",
+      "normal": "render-data-training/normal/023_normal.mp4",
+      "uv": "render-data-training/uv/023_uv.mp4",
+      "motion": "render-data-training/motion/023_motion.mp4",
+      "mask": "render-data-training/mask/023_mask.mp4"
+    },
+    "text": "high-quality rendered fashion video, smooth motion, consistent garment texture, realistic fabric dynamics, clean lighting",
+    "type": "video",
+    "id": "023"
+  }
+]

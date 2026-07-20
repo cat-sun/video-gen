@@ -1,0 +1,1173 @@
+{
+  "input_root": "/workspace/VideoX-Fun-Zero3/render-data",
+  "start_frame": 90,
+  "fps": 30.0,
+  "maximum_duration_seconds": 10.0,
+  "output_resolution": [
+    720,
+    720
+  ],
+  "modalities": [
+    "gt",
+    "depth",
+    "normal",
+    "alpha",
+    "uv"
+  ],
+  "normal_mapping": "(X,Z,-Y)",
+  "depth_mapping": "inverse normalized depth (near=white)",
+  "uv_mapping": "linearized RGB; R=U, G=V; invalid UV clips excluded",
+  "excluded_uv_ids": [
+    "023",
+    "027",
+    "031",
+    "040",
+    "041",
+    "042",
+    "043",
+    "044",
+    "058",
+    "059",
+    "060",
+    "061",
+    "062",
+    "063",
+    "071",
+    "072",
+    "073",
+    "074"
+  ],
+  "clips": [
+    {
+      "id": "000",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 261,
+      "duration_seconds": 8.7,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/000.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/000_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/000_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/000_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/000_uv.mp4"
+      }
+    },
+    {
+      "id": "001",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/001.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/001_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/001_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/001_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/001_uv.mp4"
+      }
+    },
+    {
+      "id": "002",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/002.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/002_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/002_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/002_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/002_uv.mp4"
+      }
+    },
+    {
+      "id": "003",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 261,
+      "duration_seconds": 8.7,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/003.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/003_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/003_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/003_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/003_uv.mp4"
+      }
+    },
+    {
+      "id": "004",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/004.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/004_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/004_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/004_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/004_uv.mp4"
+      }
+    },
+    {
+      "id": "005",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 182,
+      "duration_seconds": 6.066666666666666,
+      "hard_cut": {
+        "frame_before": 271,
+        "frame_after": 272,
+        "alpha_iou": 0.6172423877632912,
+        "preview_mae": 0.13587139546871185
+      },
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/005.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/005_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/005_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/005_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/005_uv.mp4"
+      }
+    },
+    {
+      "id": "006",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/006.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/006_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/006_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/006_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/006_uv.mp4"
+      }
+    },
+    {
+      "id": "007",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/007.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/007_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/007_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/007_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/007_uv.mp4"
+      }
+    },
+    {
+      "id": "008",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 182,
+      "duration_seconds": 6.066666666666666,
+      "hard_cut": {
+        "frame_before": 271,
+        "frame_after": 272,
+        "alpha_iou": 0.6389262545473823,
+        "preview_mae": 0.12481793016195297
+      },
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/008.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/008_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/008_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/008_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/008_uv.mp4"
+      }
+    },
+    {
+      "id": "009",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/009.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/009_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/009_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/009_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/009_uv.mp4"
+      }
+    },
+    {
+      "id": "010",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/010.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/010_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/010_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/010_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/010_uv.mp4"
+      }
+    },
+    {
+      "id": "011",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 241,
+      "duration_seconds": 8.033333333333333,
+      "hard_cut": {
+        "frame_before": 330,
+        "frame_after": 331,
+        "alpha_iou": 0.4910235732446842,
+        "preview_mae": 0.21274630725383759
+      },
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/011.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/011_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/011_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/011_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/011_uv.mp4"
+      }
+    },
+    {
+      "id": "012",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 241,
+      "duration_seconds": 8.033333333333333,
+      "hard_cut": {
+        "frame_before": 330,
+        "frame_after": 331,
+        "alpha_iou": 0.40028189314846585,
+        "preview_mae": 0.19752204418182373
+      },
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/012.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/012_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/012_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/012_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/012_uv.mp4"
+      }
+    },
+    {
+      "id": "013",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 279,
+      "duration_seconds": 9.3,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/013.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/013_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/013_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/013_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/013_uv.mp4"
+      }
+    },
+    {
+      "id": "014",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 102,
+      "duration_seconds": 3.4,
+      "hard_cut": {
+        "frame_before": 191,
+        "frame_after": 192,
+        "alpha_iou": 0.30033037221936715,
+        "preview_mae": 0.22467362880706787
+      },
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/014.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/014_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/014_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/014_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/014_uv.mp4"
+      }
+    },
+    {
+      "id": "015",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 102,
+      "duration_seconds": 3.4,
+      "hard_cut": {
+        "frame_before": 191,
+        "frame_after": 192,
+        "alpha_iou": 0.527298212677432,
+        "preview_mae": 0.179576575756073
+      },
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/015.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/015_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/015_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/015_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/015_uv.mp4"
+      }
+    },
+    {
+      "id": "016",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/016.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/016_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/016_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/016_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/016_uv.mp4"
+      }
+    },
+    {
+      "id": "017",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/017.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/017_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/017_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/017_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/017_uv.mp4"
+      }
+    },
+    {
+      "id": "018",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 260,
+      "duration_seconds": 8.666666666666666,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/018.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/018_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/018_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/018_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/018_uv.mp4"
+      }
+    },
+    {
+      "id": "019",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/019.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/019_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/019_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/019_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/019_uv.mp4"
+      }
+    },
+    {
+      "id": "020",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/020.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/020_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/020_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/020_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/020_uv.mp4"
+      }
+    },
+    {
+      "id": "021",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/021.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/021_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/021_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/021_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/021_uv.mp4"
+      }
+    },
+    {
+      "id": "022",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/022.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/022_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/022_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/022_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/022_uv.mp4"
+      }
+    },
+    {
+      "id": "024",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/024.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/024_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/024_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/024_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/024_uv.mp4"
+      }
+    },
+    {
+      "id": "025",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/025.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/025_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/025_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/025_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/025_uv.mp4"
+      }
+    },
+    {
+      "id": "026",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/026.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/026_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/026_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/026_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/026_uv.mp4"
+      }
+    },
+    {
+      "id": "028",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 260,
+      "duration_seconds": 8.666666666666666,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/028.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/028_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/028_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/028_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/028_uv.mp4"
+      }
+    },
+    {
+      "id": "029",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 279,
+      "duration_seconds": 9.3,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/029.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/029_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/029_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/029_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/029_uv.mp4"
+      }
+    },
+    {
+      "id": "030",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/030.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/030_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/030_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/030_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/030_uv.mp4"
+      }
+    },
+    {
+      "id": "032",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/032.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/032_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/032_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/032_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/032_uv.mp4"
+      }
+    },
+    {
+      "id": "033",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/033.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/033_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/033_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/033_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/033_uv.mp4"
+      }
+    },
+    {
+      "id": "034",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/034.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/034_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/034_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/034_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/034_uv.mp4"
+      }
+    },
+    {
+      "id": "035",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 261,
+      "duration_seconds": 8.7,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/035.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/035_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/035_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/035_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/035_uv.mp4"
+      }
+    },
+    {
+      "id": "036",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 237,
+      "duration_seconds": 7.9,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/036.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/036_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/036_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/036_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/036_uv.mp4"
+      }
+    },
+    {
+      "id": "037",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 261,
+      "duration_seconds": 8.7,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/037.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/037_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/037_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/037_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/037_uv.mp4"
+      }
+    },
+    {
+      "id": "038",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/038.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/038_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/038_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/038_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/038_uv.mp4"
+      }
+    },
+    {
+      "id": "039",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 182,
+      "duration_seconds": 6.066666666666666,
+      "hard_cut": {
+        "frame_before": 271,
+        "frame_after": 272,
+        "alpha_iou": 0.6171878720263403,
+        "preview_mae": 0.12933236360549927
+      },
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/039.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/039_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/039_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/039_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/039_uv.mp4"
+      }
+    },
+    {
+      "id": "045",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/045.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/045_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/045_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/045_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/045_uv.mp4"
+      }
+    },
+    {
+      "id": "046",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 261,
+      "duration_seconds": 8.7,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/046.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/046_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/046_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/046_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/046_uv.mp4"
+      }
+    },
+    {
+      "id": "047",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/047.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/047_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/047_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/047_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/047_uv.mp4"
+      }
+    },
+    {
+      "id": "048",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 261,
+      "duration_seconds": 8.7,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/048.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/048_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/048_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/048_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/048_uv.mp4"
+      }
+    },
+    {
+      "id": "049",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/049.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/049_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/049_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/049_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/049_uv.mp4"
+      }
+    },
+    {
+      "id": "050",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 260,
+      "duration_seconds": 8.666666666666666,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/050.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/050_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/050_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/050_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/050_uv.mp4"
+      }
+    },
+    {
+      "id": "051",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/051.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/051_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/051_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/051_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/051_uv.mp4"
+      }
+    },
+    {
+      "id": "052",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 260,
+      "duration_seconds": 8.666666666666666,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/052.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/052_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/052_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/052_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/052_uv.mp4"
+      }
+    },
+    {
+      "id": "053",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/053.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/053_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/053_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/053_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/053_uv.mp4"
+      }
+    },
+    {
+      "id": "054",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/054.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/054_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/054_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/054_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/054_uv.mp4"
+      }
+    },
+    {
+      "id": "055",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/055.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/055_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/055_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/055_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/055_uv.mp4"
+      }
+    },
+    {
+      "id": "056",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/056.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/056_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/056_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/056_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/056_uv.mp4"
+      }
+    },
+    {
+      "id": "057",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/057.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/057_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/057_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/057_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/057_uv.mp4"
+      }
+    },
+    {
+      "id": "064",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/064.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/064_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/064_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/064_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/064_uv.mp4"
+      }
+    },
+    {
+      "id": "065",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 237,
+      "duration_seconds": 7.9,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/065.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/065_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/065_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/065_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/065_uv.mp4"
+      }
+    },
+    {
+      "id": "066",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/066.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/066_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/066_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/066_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/066_uv.mp4"
+      }
+    },
+    {
+      "id": "067",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/067.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/067_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/067_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/067_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/067_uv.mp4"
+      }
+    },
+    {
+      "id": "068",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/068.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/068_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/068_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/068_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/068_uv.mp4"
+      }
+    },
+    {
+      "id": "069",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 79,
+      "duration_seconds": 2.6333333333333333,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/069.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/069_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/069_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/069_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/069_uv.mp4"
+      }
+    },
+    {
+      "id": "070",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/070.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/070_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/070_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/070_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/070_uv.mp4"
+      }
+    },
+    {
+      "id": "075",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/075.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/075_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/075_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/075_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/075_uv.mp4"
+      }
+    },
+    {
+      "id": "076",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 237,
+      "duration_seconds": 7.9,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/076.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/076_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/076_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/076_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/076_uv.mp4"
+      }
+    },
+    {
+      "id": "077",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/077.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/077_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/077_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/077_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/077_uv.mp4"
+      }
+    },
+    {
+      "id": "078",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/078.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/078_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/078_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/078_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/078_uv.mp4"
+      }
+    },
+    {
+      "id": "079",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 265,
+      "duration_seconds": 8.833333333333334,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/079.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/079_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/079_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/079_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/079_uv.mp4"
+      }
+    },
+    {
+      "id": "080",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 237,
+      "duration_seconds": 7.9,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/080.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/080_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/080_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/080_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/080_uv.mp4"
+      }
+    },
+    {
+      "id": "081",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/081.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/081_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/081_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/081_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/081_uv.mp4"
+      }
+    },
+    {
+      "id": "082",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/082.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/082_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/082_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/082_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/082_uv.mp4"
+      }
+    },
+    {
+      "id": "083",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/083.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/083_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/083_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/083_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/083_uv.mp4"
+      }
+    },
+    {
+      "id": "084",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/084.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/084_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/084_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/084_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/084_uv.mp4"
+      }
+    },
+    {
+      "id": "085",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 264,
+      "duration_seconds": 8.8,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/085.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/085_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/085_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/085_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/085_uv.mp4"
+      }
+    },
+    {
+      "id": "086",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/086.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/086_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/086_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/086_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/086_uv.mp4"
+      }
+    },
+    {
+      "id": "087",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 263,
+      "duration_seconds": 8.766666666666667,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/087.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/087_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/087_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/087_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/087_uv.mp4"
+      }
+    },
+    {
+      "id": "088",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/088.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/088_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/088_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/088_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/088_uv.mp4"
+      }
+    },
+    {
+      "id": "089",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 300,
+      "duration_seconds": 10.0,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/089.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/089_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/089_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/089_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/089_uv.mp4"
+      }
+    },
+    {
+      "id": "090",
+      "status": "ok",
+      "start_frame": 90,
+      "frames": 260,
+      "duration_seconds": 8.666666666666666,
+      "hard_cut": null,
+      "paths": {
+        "gt": "/workspace/VideoX-Fun-Zero3/render-data-processed/gt/090.mp4",
+        "depth": "/workspace/VideoX-Fun-Zero3/render-data-processed/depth/090_depth.mp4",
+        "normal": "/workspace/VideoX-Fun-Zero3/render-data-processed/normal/090_normal.mp4",
+        "alpha": "/workspace/VideoX-Fun-Zero3/render-data-processed/alpha/090_alpha.mp4",
+        "uv": "/workspace/VideoX-Fun-Zero3/render-data-processed/uv/090_uv.mp4"
+      }
+    }
+  ],
+  "failures": []
+}
