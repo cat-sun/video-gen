@@ -4,20 +4,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-4}"
-BASE_MODEL_DIR="../models/Wan2.1-VACE-1.3B"
-CHECKPOINT_DIR="checkpoints/reference-control-disentangled-2"
+CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+BASE_MODEL_DIR="/root/autodl-tmp/models/Wan2.1-VACE-1.3B"
+CHECKPOINT_DIR="checkpoints/multi-control-fused"
 CHECKPOINT_STEPS="${CHECKPOINT_STEPS:-latest}"
-METADATA_FILE="datasets/fashion_vace/metadata_test_16fps.json"
+METADATA_FILE="datasets/fashion_vace/metadata_test_render.json"
 SAMPLE_ID=""
 GT_VIDEO_DIR="${ROOT}/datasets/fashion_vace/videos_16fps/test/gt"
-RESULT_DIR="output_dir_fashion_vace/test_results/reference-control-disentangled-2/16fps-720x944"
+RESULT_DIR="output_dir_fashion_vace/test_results/multi-control/16fps-720x944"
 SAMPLE_H="944"
 SAMPLE_W="720"
-VIDEO_LENGTH="81"
-EXPORT_FPS="16"
-REFERENCE_RESIDUAL_SCALE="${REFERENCE_RESIDUAL_SCALE:-1.5}"
-CONTROL_RESIDUAL_SCALE="${CONTROL_RESIDUAL_SCALE:-0.8}"
+VIDEO_LENGTH="49"
+EXPORT_FPS="30"
 
 export CUDA_VISIBLE_DEVICES
 
@@ -49,6 +47,23 @@ PY
 fi
 
 
+cat <<EOF
+========== Fashion VACE inference ==========
+CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-4}"
+BASE_MODEL_DIR=${BASE_MODEL_DIR}
+CHECKPOINT_DIR="/data/miaomiao/checkpoints/multi-control"
+CHECKPOINT_STEPS="${CHECKPOINT_STEPS:-latest}"
+METADATA_FILE=${METADATA_FILE}
+SAMPLE_ID=${SAMPLE_ID:-<all>}
+RUN_METADATA_FILE=${RUN_METADATA_FILE}
+GT_VIDEO_DIR=${GT_VIDEO_DIR}
+RESULT_DIR=${RESULT_DIR}
+SAMPLE_H/W=${SAMPLE_H}/${SAMPLE_W}
+VIDEO_LENGTH=${VIDEO_LENGTH}
+EXPORT_FPS=${EXPORT_FPS}
+============================================
+EOF
+
 python scripts/wan2.1_vace/batch_predict_fashion_test.py \
   --output_dir "${CHECKPOINT_DIR}" \
   --checkpoints "${CHECKPOINT_STEPS}" \
@@ -58,7 +73,5 @@ python scripts/wan2.1_vace/batch_predict_fashion_test.py \
   --sample_width "${SAMPLE_W}" \
   --video_length "${VIDEO_LENGTH}" \
   --metadata "${RUN_METADATA_FILE}" \
-  --vace_reference_context_scale "${REFERENCE_RESIDUAL_SCALE}" \
-  --vace_control_context_scale "${CONTROL_RESIDUAL_SCALE}" \
   --fps "${EXPORT_FPS}" \
   --gt_dir "${GT_VIDEO_DIR}"

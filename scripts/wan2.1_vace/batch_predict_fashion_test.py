@@ -106,8 +106,6 @@ def parse_args():
     p.add_argument("--guidance_scale", type=float, default=5.0)
     p.add_argument("--num_inference_steps", type=int, default=40)
     p.add_argument("--vace_context_scale", type=float, default=1.0)
-    p.add_argument("--vace_reference_context_scale", type=float, default=1.0)
-    p.add_argument("--vace_control_context_scale", type=float, default=None)
     p.add_argument("--shift", type=int, default=16)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument(
@@ -397,8 +395,6 @@ def run_one_sample(
     num_inference_steps: int,
     shift: int,
     vace_context_scale: float,
-    vace_reference_context_scale: float,
-    vace_control_context_scale: Optional[float],
     generator: torch.Generator,
 ) -> torch.Tensor:
     """Same data flow as predict_v2v_control.py: ref_image_path + control_file_path."""
@@ -467,8 +463,6 @@ def run_one_sample(
         subject_ref_images=subject_ref_images,
         shift=shift,
         vace_context_scale=vace_context_scale,
-        vace_reference_context_scale=vace_reference_context_scale,
-        vace_control_context_scale=vace_control_context_scale,
     ).videos
 
 
@@ -580,8 +574,6 @@ def main():
                     args.num_inference_steps,
                     args.shift,
                     args.vace_context_scale,
-                    args.vace_reference_context_scale,
-                    args.vace_control_context_scale,
                     generator,
                 )
                 save_videos_grid(videos, str(out_path), fps=args.fps)

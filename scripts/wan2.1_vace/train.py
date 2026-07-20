@@ -804,18 +804,6 @@ def parse_args():
         help="Keep object_file_path subject ref in inpaint branch (do not randomly drop).",
     )
     parser.add_argument(
-        "--vace_reference_context_scale",
-        type=float,
-        default=1.0,
-        help="Scale for the reference memory cross-attention path.",
-    )
-    parser.add_argument(
-        "--vace_control_context_scale",
-        type=float,
-        default=None,
-        help="Scale for the control VACE hints. Defaults to vace_context_scale inside the transformer.",
-    )
-    parser.add_argument(
         "--align_gt_frames_to_control",
         action="store_true",
         help="Sample GT and control using min(GT frames, control frames) so indices never exceed the shorter video.",
@@ -2033,48 +2021,6 @@ def main():
                 def vace_latent(z, m):
                     return [torch.cat([zz, mm], dim=0) for zz, mm in zip(z, m)]
 
-                def split_vace_reference_control_context(vace_context, ref_images):
-                    if ref_images is None:
-                        return vace_context, None
-
-                    control_context = []
-                    reference_context = []
-                    has_reference = False
-                    debug_limit = int(os.environ.get("VIDEOX_VACE_DEBUG", "0") or 0)
-                    debug_count = getattr(split_vace_reference_control_context, "_debug_count", 0)
-                    for context, refs in zip(vace_context, ref_images):
-                        ref_len = 0 if refs is None else len(refs)
-                        if ref_len <= 0:
-                            control_context.append(context)
-                            reference_context.append(torch.zeros_like(context))
-                            continue
-
-                        has_reference = True
-                        control = torch.zeros_like(context)
-                        reference = torch.zeros_like(context)
-                        reference[:, :ref_len] = context[:, :ref_len]
-                        control[:, ref_len:] = context[:, ref_len:]
-                        control_context.append(control)
-                        reference_context.append(reference)
-                        if (
-                            debug_limit
-                            and debug_count < debug_limit
-                            and accelerator.is_main_process
-                        ):
-                            print(
-                                "[VACE_DEBUG] train_split "
-                                f"ref_len={ref_len} "
-                                f"context_shape={tuple(context.shape)} "
-                                f"context_norm={context.detach().float().norm().item():.6f} "
-                                f"reference_norm={reference.detach().float().norm().item():.6f} "
-                                f"control_norm={control.detach().float().norm().item():.6f}",
-                                flush=True,
-                            )
-                            debug_count += 1
-
-                    split_vace_reference_control_context._debug_count = debug_count
-                    return torch.stack(control_context), torch.stack(reference_context) if has_reference else None
-
                 with torch.no_grad():
                     # This way is quicker when batch grows up
                     def _batch_encode_vae(pixel_values):
@@ -2181,9 +2127,6 @@ def main():
 
                     mask_latents = vace_encode_masks(mask, subject_ref_images)
                     vace_context = torch.stack(vace_latent(vace_latents, mask_latents))
-                    vace_control_context, vace_reference_context = split_vace_reference_control_context(
-                        vace_context, subject_ref_images
-                    )
                     
                     if subject_ref_images is not None:
                         for i in range(len(subject_ref_images)):
@@ -2298,10 +2241,6 @@ def main():
                         t=timesteps,
                         seq_len=seq_len,
                         vace_context=vace_context,
-                        vace_reference_context=vace_reference_context,
-                        vace_control_context=vace_control_context,
-                        vace_reference_context_scale=args.vace_reference_context_scale,
-                        vace_control_context_scale=args.vace_control_context_scale,
                     )
                 
                 def custom_mse_loss(noise_pred, target, weighting=None, threshold=50):
